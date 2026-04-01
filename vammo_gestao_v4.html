@@ -1057,6 +1057,29 @@ function renderCols() {
 }
 
 
+function populateColTurnoModal() {
+  const sel = document.getElementById('col-turno');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '';
+  if (turnosData.length) {
+    turnosData.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = t.nome + (t.base && t.base !== 'Principal' ? ' — ' + t.base : '');
+      sel.appendChild(o);
+    });
+  } else {
+    // Fallback enquanto turnosData não carregou
+    ['Primeiro','Segundo','Terceiro','Quarto'].forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      sel.appendChild(o);
+    });
+  }
+  if (cur) sel.value = cur;
+}
+
 function abrirNovoCol() {
   populateColTurnoModal();
   document.getElementById('modal-col-title').textContent = 'NOVO COLABORADOR';

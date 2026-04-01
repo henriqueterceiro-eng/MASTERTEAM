@@ -842,23 +842,26 @@ function remTurno(idEnc,baseEnc){
 
 // ════ CONFIG — SUPERVISORES ════
 function loadCfgSups() {
-  // Carrega turnos e supervisores em paralelo
   const el = document.getElementById('sup-list-cfg');
   if (el) el.innerHTML = '<div class="spinner" style="margin:40px auto;"></div>';
 
-  let turnosOk = false, supsOk = false;
-
-  call('turnos', {}, d => {
-    turnosData = d.turnos || [];
-    d.turnos.forEach(t => { turnoMap[t.id] = t.nome; });
-    turnosOk = true;
-    if (supsOk) renderSupCfgList();
-  });
-
+  // Primeiro carrega supervisores, depois renderiza (turnos já carregados no init)
   call('supervisores', {}, d => {
-    sups = d.supervisores || []; // [{nome, turno}]
-    supsOk = true;
-    if (turnosOk) renderSupCfgList();
+    if (d.error) {
+      if (el) el.innerHTML = '<div class="empty-st">❌ Erro: ' + d.error + '</div>';
+      return;
+    }
+    sups = d.supervisores || [];
+    // Se turnosData ainda não carregou, carrega agora
+    if (!turnosData.length) {
+      call('turnos', {}, dt => {
+        turnosData = dt.turnos || [];
+        (dt.turnos||[]).forEach(t => { turnoMap[t.id] = t.nome; });
+        renderSupCfgList();
+      });
+    } else {
+      renderSupCfgList();
+    }
   });
 }
 
@@ -866,25 +869,30 @@ function renderSupCfgList() {
   const el = document.getElementById('sup-list-cfg');
   if (!el) return;
   if (!sups.length) {
-    el.innerHTML = '<div class="empty-st">Nenhum supervisor cadastrado</div>';
+    el.innerHTML = '<div class="empty-st">Nenhum supervisor cadastrado.<br><small>Use "+ Novo Supervisor" para adicionar.</small></div>';
     return;
   }
 
   el.innerHTML = sups.map(s => {
-    const tNome = turnoMap[s.turno] || s.turno || '— sem turno —';
-    // Conta mecânicos do turno
-    const count = allCols.filter(c => c.turno === s.turno && c.status === 'Ativo').length;
+    // Suporte a formato antigo (string) e novo ({nome, turno})
+    const nome  = typeof s === 'object' ? (s.nome  || '?') : s;
+    const turno = typeof s === 'object' ? (s.turno || '')  : '';
+    const tNome = turnoMap[turno] || turno || '— sem turno definido —';
+    const count = allCols.filter(c => c.turno === turno && c.status === 'Ativo').length;
+    const corCount = count > 0 ? 'color:var(--muted)' : 'color:var(--orange)';
+    const txtCount = count > 0 ? '👥 ' + count + ' mecânicos' : '⚠️ nenhum mecânico neste turno';
+
     return '<div style="background:var(--white);border:1px solid var(--b1);border-radius:12px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);">' +
       '<div>' +
-        '<div style="font-family:Barlow Condensed,sans-serif;font-size:18px;font-weight:800;">' + s.nome + '</div>' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">' +
+        '<div style="font-family:Barlow Condensed,sans-serif;font-size:18px;font-weight:800;color:var(--text)">' + nome + '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:5px;">' +
           '<span class="badge b-blue" style="font-size:11px;">🏷️ ' + tNome + '</span>' +
-          (count ? '<span style="font-size:11px;color:var(--muted);">👥 ' + count + ' mecânicos</span>' : '<span style="font-size:11px;color:var(--orange);">⚠️ sem turno definido</span>') +
+          '<span style="font-size:11px;' + corCount + '">' + txtCount + '</span>' +
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;">' +
-        '<button class="btn btn-ghost btn-sm" onclick="editSup(' + JSON.stringify(s.nome) + ',' + JSON.stringify(s.turno||'') + ')">✏️ Editar</button>' +
-        '<button class="btn btn-ghost btn-sm" onclick="remSup(' + JSON.stringify(s.nome) + ')" style="color:var(--red);">🗑️</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="editSup(\'' + encodeURIComponent(nome) + '\',\'' + encodeURIComponent(turno) + '\')">✏️ Editar</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="remSup(\'' + encodeURIComponent(nome) + '\')" style="color:var(--red);">🗑️</button>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -914,53 +922,41 @@ function abrirNovoSup() {
   setTimeout(() => document.getElementById('sup-nome').focus(), 80);
 }
 
-function editSup(nome, turno) {
+function editSup(nomeEnc, turnoEnc) {
+  const nome  = decodeURIComponent(nomeEnc);
+  const turno = decodeURIComponent(turnoEnc);
   populateSupTurnoModal();
   document.getElementById('modal-sup-title').textContent = 'EDITAR SUPERVISOR';
   document.getElementById('sup-nome').value  = nome;
   document.getElementById('sup-orig').value  = nome;
-  setTimeout(() => { document.getElementById('sup-turno').value = turno; }, 50);
+  setTimeout(() => { document.getElementById('sup-turno').value = turno; }, 60);
   openModal('modal-sup');
+}
+
+function remSup(nomeEnc) {
+  const nome = decodeURIComponent(nomeEnc);
+  if (!confirm('Remover supervisor ' + nome + '?')) return;
+  call('removeSup', { nome }, d => {
+    if (d.ok) { loadCfgSups(); toast('✅ ' + nome + ' removido'); }
+    else toast('❌ ' + (d.error || 'Erro'));
+  });
 }
 
 function salvarSup() {
   const nome  = document.getElementById('sup-nome').value.trim();
   const turno = document.getElementById('sup-turno').value;
   const orig  = document.getElementById('sup-orig').value;
-  if (!nome) { toast('⚠️ Digite o nome do supervisor'); return; }
-  if (!turno){ toast('⚠️ Selecione o turno do supervisor'); return; }
-
+  if (!nome)  { toast('⚠️ Digite o nome do supervisor'); return; }
+  if (!turno) { toast('⚠️ Selecione o turno'); return; }
   const btn = document.getElementById('btn-salvar-sup');
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
-
   const isEdit = !!orig;
-  const params = isEdit ? { nome, turno, nomeOriginal: orig } : { nome, turno };
-
-  call(isEdit ? 'editSup' : 'addSup', params, d => {
+  call(isEdit ? 'editSup' : 'addSup', isEdit ? { nome, turno, nomeOriginal: orig } : { nome, turno }, d => {
     btn.disabled = false; btn.textContent = '💾 Salvar';
     if (d.error) { toast('❌ ' + d.error); return; }
     closeModal('modal-sup');
-    // Atualiza dropdowns de supervisor nas outras abas
-    if (!isEdit) {
-      ['dash-sup','ext-sup','bon-sup'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { const o = document.createElement('option'); o.value=nome; o.textContent=nome; el.appendChild(o); }
-      });
-    }
     loadCfgSups();
-    toast(isEdit ? '✅ Supervisor atualizado!' : '✅ Supervisor ' + nome + ' criado!');
-  });
-}
-
-function remSup(nome) {
-  if (!confirm('Remover supervisor ' + nome + '? Os registros de presença não serão afetados.')) return;
-  call('removeSup', { nome }, d => {
-    if (d.ok) {
-      loadCfgSups();
-      toast('✅ ' + nome + ' removido');
-    } else {
-      toast('❌ ' + (d.error || 'Erro ao remover'));
-    }
+    toast(isEdit ? '✅ ' + nome + ' atualizado!' : '✅ Supervisor ' + nome + ' criado!');
   });
 }
 

@@ -819,12 +819,16 @@ function salvarTurno(){
   const isEdit=!!origId;
   const action=isEdit?'editTurno':'addTurno';
   const params=isEdit?{turnoId:origId,nome,base}:{turnoId:id,nome,base};
+  const btn=document.querySelector('#modal-turno .btn-blue');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Salvando...';}
+  const reset=()=>{if(btn){btn.disabled=false;btn.textContent='💾 Salvar';}};
   call(action,params,d=>{
+    reset();
     if(d.error){toast('❌ '+d.error);return;}
     closeModal('modal-turno');
     loadTurnos();
     toast('✅ Turno '+(isEdit?'atualizado':'criado')+': '+nome);
-  });
+  },reset);
 }
 function editTurno(idEnc,nomeEnc,baseEnc){
   const id=dec(idEnc),nome=dec(nomeEnc),base=dec(baseEnc);
@@ -951,13 +955,14 @@ function salvarSup() {
   const btn = document.getElementById('btn-salvar-sup');
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
   const isEdit = !!orig;
+  const reset = () => { btn.disabled = false; btn.textContent = '💾 Salvar'; };
   call(isEdit ? 'editSup' : 'addSup', isEdit ? { nome, turno, nomeOriginal: orig } : { nome, turno }, d => {
-    btn.disabled = false; btn.textContent = '💾 Salvar';
+    reset();
     if (d.error) { toast('❌ ' + d.error); return; }
     closeModal('modal-sup');
     loadCfgSups();
     toast(isEdit ? '✅ ' + nome + ' atualizado!' : '✅ Supervisor ' + nome + ' criado!');
-  });
+  }, reset);
 }
 
 
@@ -1144,15 +1149,16 @@ function salvarCol() {
     ? { nome, turno, setor, nomeOriginal: orig }
     : { nome, turno, setor };
 
+  const resetCol = () => { btn.disabled = false; btn.textContent = '💾 Salvar'; };
   call(isEdit ? 'editCol' : 'addCol', params, d => {
-    btn.disabled = false; btn.textContent = '💾 Salvar';
+    resetCol();
     if (d.error) { toast('❌ ' + d.error); return; }
     closeModal('modal-col');
     loadCols();
     toast(isEdit
       ? `✅ ${nome} atualizado!`
       : `✅ ${nome} cadastrado com sucesso!`);
-  });
+  }, resetCol);
 }
 
 function toggleColSt(ne, st) {
@@ -1201,13 +1207,14 @@ function enc(s){return encodeURIComponent(s);}
 function dec(s){return decodeURIComponent(s);}
 
 let _n=0;
-function call(action,params,cb){
+function call(action,params,cb,onErr){
   const cbName='_vg'+(++_n);
   const qs=Object.entries({...params,action,callback:cbName}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
   const sc=document.createElement('script');
-  const to=setTimeout(()=>{toast('❌ Timeout — URL correta?');delete window[cbName];sc.remove();},18000);
+  const fail=(msg)=>{toast(msg);delete window[cbName];sc.remove();if(onErr)onErr();};
+  const to=setTimeout(()=>fail('❌ Timeout — redeploye o Apps Script'),18000);
   window[cbName]=data=>{clearTimeout(to);delete window[cbName];sc.remove();cb(data);};
-  sc.onerror=()=>{clearTimeout(to);toast('❌ Erro de conexão');delete window[cbName];sc.remove();};
+  sc.onerror=()=>{clearTimeout(to);fail('❌ Erro de conexão');};
   sc.src=SCRIPT_URL+'?'+qs;document.head.appendChild(sc);
 }
 let _tt;

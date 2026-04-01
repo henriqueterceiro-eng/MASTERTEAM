@@ -432,7 +432,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
       </div>
     </div>
 
-    <!-- COLABORADORES -->
+      <!-- COLABORADORES -->
     <div class="cfg-content" id="cfg-cols">
       <div class="panel-hd">
         <div class="panel-title">Colaboradores</div>
@@ -451,8 +451,13 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
             <option value="Ativo">Só Ativos</option>
             <option value="Inativo">Só Inativos</option>
           </select>
-          <button class="btn btn-blue btn-sm" onclick="abrirNovoCol()">+ Novo Colaborador</button>
+          <button class="btn btn-blue btn-sm" onclick="loadCols()">🔄 Carregar</button>
+          <button class="btn btn-blue btn-sm" onclick="abrirNovoCol()">+ Novo</button>
         </div>
+      </div>
+      <!-- DIAGNÓSTICO -->
+      <div id="col-diag" style="padding:8px 20px;background:#fff8e1;border-bottom:1px solid #ffe082;font-size:11px;color:#795548;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span id="col-diag-txt">Aguardando carregamento...</span>
       </div>
       <!-- contador -->
       <div style="padding:6px 20px;background:var(--bg);border-bottom:1px solid var(--b1);font-size:11px;color:var(--muted);flex-shrink:0;">
@@ -924,19 +929,28 @@ function remSup(ne){
 
 // ════ CONFIG — COLABORADORES ════
 // ════ CONFIG — COLABORADORES ════
+function diag(msg) {
+  const el = document.getElementById('col-diag-txt');
+  if (el) el.textContent = new Date().toLocaleTimeString('pt-BR') + ' — ' + msg;
+  console.log('[COLS]', msg);
+}
+
 function loadCols() {
+  diag('Iniciando loadCols...');
   const tbody = document.getElementById('cols-body');
   if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>';
   const countEl = document.getElementById('col-count');
   if (countEl) countEl.textContent = 'Carregando...';
 
+  diag('Chamando API colaboradores...');
   call('colaboradores', {}, d => {
+    diag('Resposta recebida: ' + JSON.stringify(d).substring(0, 120));
     if (d.error) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty-st">❌ Erro: ${d.error}</td></tr>`;
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-st">❌ Erro API: ' + d.error + '</td></tr>';
       return;
     }
     allCols = d.colaboradores || [];
-    // Popula filtro de turno
+    diag('Total recebido: ' + allCols.length + ' colaboradores');
     const selTf = document.getElementById('col-tf');
     if (selTf) {
       const cur = selTf.value;
@@ -944,8 +958,7 @@ function loadCols() {
       selTf.innerHTML = '<option value="">Todos os turnos</option>';
       ids.forEach(id => {
         const o = document.createElement('option');
-        o.value = id;
-        o.textContent = turnoNome(id) || id;
+        o.value = id; o.textContent = turnoNome(id) || id;
         selTf.appendChild(o);
       });
       if (cur) selTf.value = cur;

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VAMMO | Chamada Diária</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#2EC2FF;--blue-d:rgba(46,194,255,.12);--blue-b:rgba(46,194,255,.25);
+  --bg:#F7F9FC;--white:#FFFFFF;--card:#FFFFFF;
+  --b1:#E8EDF3;--b2:#D0D8E4;--b3:#B8C4D4;
+  --text:#0F1923;--muted:#7A8FA6;--muted2:#A8B8CC;
+  --green:#00C853;--green-d:rgba(0,200,83,.1);
+  --red:#F23557;--red-d:rgba(242,53,87,.1);
+  --orange:#FF8C00;--orange-d:rgba(255,140,0,.1);
+  --yellow:#F5B800;--yellow-d:rgba(245,184,0,.1);
+  --purple:#8B5CF6;--purple-d:rgba(139,92,246,.1);
+  --cyan:#0EA5E9;--cyan-d:rgba(14,165,233,.1);
+  --shadow:0 1px 3px rgba(15,25,35,.08),0 4px 12px rgba(15,25,35,.04);
+  --shadow-md:0 4px 16px rgba(15,25,35,.1),0 1px 4px rgba(15,25,35,.06);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;display:flex;flex-direction:column;}
+
+/* HEADER */
+.hd{background:var(--white);border-bottom:1px solid var(--b1);height:54px;display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0;box-shadow:var(--shadow);}
+.logo-wrap{display:flex;align-items:center;gap:12px;margin-right:12px;}
+.logo-mark{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.logo-mark span{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;color:#fff;letter-spacing:1px;}
+.logo-text{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;letter-spacing:3px;color:var(--text);}
+.logo-sub{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.hd-div{width:1px;height:22px;background:var(--b2);}
+
+select,input[type=date],input[type=text],input[type=number]{
+  background:var(--white);color:var(--text);border:1px solid var(--b2);border-radius:7px;
+  padding:7px 12px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:all .15s;
+  box-shadow:0 1px 2px rgba(15,25,35,.04);}
+select:focus,input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-d);}
+select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='%237A8FA6'%3E%3Cpath d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;}
+
+/* BTN */
+.btn{padding:7px 16px;border-radius:7px;border:none;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.45;cursor:default;transform:none;}
+.btn-blue{background:var(--blue);color:#fff;box-shadow:0 2px 8px var(--blue-b);}
+.btn-blue:hover:not(:disabled){background:#1EB8F5;box-shadow:0 4px 14px var(--blue-b);}
+.btn-ghost{background:var(--white);color:var(--muted);border:1px solid var(--b2);box-shadow:0 1px 2px rgba(15,25,35,.04);}
+.btn-ghost:hover{border-color:var(--blue);color:var(--blue);}
+.btn-sm{padding:5px 11px;font-size:11px;}
+
+/* LAYOUT */
+.body{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+.sb{width:228px;background:var(--white);border-right:1px solid var(--b1);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.sb-sec{padding:16px;border-bottom:1px solid var(--b1);}
+.sb-lbl{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;font-weight:600;}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.stat{background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:12px 10px;text-align:center;}
+.stat-n{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;line-height:1;}
+.stat-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;font-weight:600;}
+
+/* OCUPAÇÃO BARS */
+.ocup-list{display:flex;flex-direction:column;gap:8px;}
+.ocup-row{display:flex;align-items:center;gap:8px;}
+.ocup-name{font-size:11px;color:var(--muted);min-width:88px;}
+.ocup-bar-bg{flex:1;height:5px;background:var(--b1);border-radius:3px;}
+.ocup-bar{height:100%;background:var(--blue);border-radius:3px;transition:width .4s;}
+.ocup-n{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--blue);min-width:20px;text-align:right;}
+
+/* QUICK BTNS */
+.quick-btns{display:flex;flex-direction:column;gap:6px;}
+.quick-btns .btn{width:100%;text-align:center;padding:9px;}
+
+/* SAVE SECTION */
+.save-sec{padding:14px 16px;margin-top:auto;border-top:1px solid var(--b1);}
+.save-ind{font-size:11px;text-align:center;margin-top:7px;padding:4px 12px;border-radius:20px;transition:all .3s;}
+.save-ind.ok{color:var(--green);background:var(--green-d);}
+.save-ind.dirty{color:var(--orange);background:var(--orange-d);}
+.save-ind.hidden{opacity:0;}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.toolbar{background:var(--white);border-bottom:1px solid var(--b1);padding:10px 20px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.toolbar-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:2px;color:var(--text);margin-right:auto;}
+.turno-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--blue-d);color:var(--blue);border:1px solid var(--blue-b);letter-spacing:.5px;}
+.search{background:var(--bg);color:var(--text);border:1px solid var(--b2);border-radius:7px;padding:7px 12px 7px 32px;font-size:12px;outline:none;width:180px;transition:all .15s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' fill='%237A8FA6' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.868-3.834zm-5.242 1.406a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:10px center;}
+.search:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-d);background-color:var(--white);}
+
+/* TABLE */
+.table-wrap{flex:1;overflow-y:auto;padding:12px 16px;}
+table{width:100%;border-collapse:separate;border-spacing:0 4px;}
+thead tr th{padding:8px 14px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;border-bottom:2px solid var(--b1);background:transparent;}
+tbody tr{background:var(--white);box-shadow:var(--shadow);border-radius:10px;transition:box-shadow .15s;}
+tbody tr:hover{box-shadow:var(--shadow-md);}
+tbody tr td:first-child{border-radius:10px 0 0 10px;border-left:4px solid var(--b2);}
+tbody tr td:last-child{border-radius:0 10px 10px 0;}
+tbody tr[data-s="Presente"]       td:first-child{border-left-color:var(--green);}
+tbody tr[data-s="Atraso +15min"]  td:first-child{border-left-color:var(--yellow);}
+tbody tr[data-s="Faltou"]         td:first-child{border-left-color:var(--red);}
+tbody tr[data-s="Afastado"]       td:first-child{border-left-color:var(--purple);}
+tbody tr[data-s="Férias"]         td:first-child{border-left-color:var(--cyan);}
+tbody tr[data-s="Folga"]          td:first-child{border-left-color:var(--b3);}
+td{padding:9px 14px;vertical-align:middle;}
+td.nm{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;color:var(--text);}
+td.sc{font-size:11px;color:var(--muted);font-weight:500;}
+
+/* STATUS SELECT */
+.ss{background:var(--bg);color:var(--text);border:1px solid var(--b2);border-radius:7px;padding:6px 10px;font-size:12px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer;min-width:160px;transition:all .2s;font-weight:500;}
+.ss:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-d);}
+.ss.s-pres{background:var(--green-d);border-color:rgba(0,200,83,.3);color:#00873A;}
+.ss.s-atra{background:var(--yellow-d);border-color:rgba(245,184,0,.3);color:#A07800;}
+.ss.s-falt{background:var(--red-d);border-color:rgba(242,53,87,.3);color:var(--red);}
+.ss.s-afas{background:var(--purple-d);border-color:rgba(139,92,246,.3);color:var(--purple);}
+.ss.s-fer{background:var(--cyan-d);border-color:rgba(14,165,233,.3);color:var(--cyan);}
+.ss.s-folg{background:var(--b1);border-color:var(--b2);color:var(--muted);}
+
+/* OCUPAÇÃO SELECT */
+.os{background:var(--bg);color:var(--text);border:1px solid var(--b2);border-radius:7px;padding:6px 10px;font-size:12px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer;min-width:160px;transition:all .2s;}
+.os:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-d);}
+.os.filled{background:var(--blue-d);border-color:rgba(46,194,255,.4);color:var(--blue);font-weight:600;}
+.os-hidden{display:none;}
+
+/* PERIOD INPUTS */
+.period-cell{display:flex;align-items:center;gap:6px;}
+.period-cell input[type=date]{background:var(--bg);color:var(--text);border:1px solid var(--b2);border-radius:7px;padding:5px 8px;font-size:11px;font-family:'Barlow',sans-serif;outline:none;width:128px;}
+.period-cell input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-d);}
+.period-sep{font-size:10px;color:var(--muted);}
+.period-hidden{display:none;}
+
+/* OBS */
+.obs{background:var(--bg);color:var(--text);border:1px solid var(--b2);border-radius:7px;padding:6px 10px;font-size:11px;font-family:'Barlow',sans-serif;outline:none;width:140px;transition:all .2s;}
+.obs:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-d);background:var(--white);}
+
+/* EMPTY / LOADING */
+.empty-row td{text-align:center;padding:60px;color:var(--muted);font-size:13px;}
+.spinner{width:26px;height:26px;border:2px solid var(--b2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(15,25,35,.5);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-bg.open{display:flex;}
+.modal{background:var(--white);border:1px solid var(--b1);border-radius:14px;padding:28px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(15,25,35,.2);}
+.modal h3{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:2px;color:var(--text);margin-bottom:6px;}
+.modal p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;}
+.conflict-list{background:var(--orange-d);border:1px solid rgba(255,140,0,.2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--orange);max-height:110px;overflow-y:auto;line-height:1.9;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-md);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div class="logo-wrap">
+    <img src="data:image/png;base64,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" style="height:28px;display:block;" alt="VAMMO">
+    <div class="hd-div" style="margin-left:4px;"></div>
+    <div class="logo-sub" style="margin-left:-4px;">Chamada Diária</div>
+  </div>
+  <div class="hd-div"></div>
+  <select id="sel-sup" onchange="onSupChange()" style="min-width:148px;">
+    <option value="">Carregando...</option>
+  </select>
+  <input type="date" id="inp-data" onchange="onDateChange()" style="width:148px;">
+  <div style="flex:1;"></div>
+  <div class="save-ind hidden" id="save-ind">—</div>
+  <button class="btn btn-ghost btn-sm" onclick="reloadPresencas()">↺ Recarregar</button>
+  <button class="btn btn-blue" onclick="salvar()" id="btn-salvar">💾 Salvar Chamada</button>
+</div>
+
+<div class="body">
+  <div class="sb">
+    <div class="sb-sec">
+      <div class="sb-lbl">Data</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--text);" id="sb-date">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="sb-day">—</div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sb-lbl">Resumo do dia</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-n" id="st-pres" style="color:var(--green)">0</div><div class="stat-l">Presentes</div></div>
+        <div class="stat"><div class="stat-n" id="st-atra" style="color:var(--yellow)">0</div><div class="stat-l">Atrasos</div></div>
+        <div class="stat"><div class="stat-n" id="st-falt" style="color:var(--red)">0</div><div class="stat-l">Faltas</div></div>
+        <div class="stat"><div class="stat-n" id="st-outr" style="color:var(--muted)">0</div><div class="stat-l">Outros</div></div>
+      </div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sb-lbl">Ocupações</div>
+      <div class="ocup-list" id="ocup-list"><div style="font-size:11px;color:var(--muted)">—</div></div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sb-lbl">Ações rápidas</div>
+      <div class="quick-btns">
+        <button class="btn btn-ghost" onclick="markAll('Presente')" style="color:var(--green);border-color:rgba(0,200,83,.3);">✅ Todos Presentes</button>
+        <button class="btn btn-ghost" onclick="markAll('Faltou')" style="color:var(--red);border-color:rgba(242,53,87,.3);">❌ Todos Faltaram</button>
+        <button class="btn btn-ghost" onclick="markAll('Folga')">🔘 Todos Folga</button>
+        <button class="btn btn-ghost" onclick="markAll('')">🗑️ Limpar tudo</button>
+      </div>
+    </div>
+
+    <div class="save-sec">
+      <button class="btn btn-blue" onclick="salvar()" style="width:100%;padding:10px;">💾 Salvar Chamada</button>
+      <div class="save-ind hidden" id="save-ind2">—</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="toolbar">
+      <div class="toolbar-title" id="toolbar-title">CHAMADA DO TIME</div>
+      <span class="turno-badge" id="turno-badge" style="display:none;"></span>
+      <input type="text" class="search" id="search" placeholder="Buscar colaborador..." oninput="renderTable()">
+      <select id="filter-st" onchange="renderTable()" style="width:140px;">
+        <option value="">Todos</option>
+        <option value="Presente">✅ Presentes</option>
+        <option value="Atraso +15min">⏰ Atrasos</option>
+        <option value="Faltou">❌ Faltas</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:40px">#</th>
+          <th>Colaborador</th>
+          <th>Setor</th>
+          <th>Status</th>
+          <th>Ocupação</th>
+          <th>Período (afastado/férias)</th>
+          <th>Obs</th>
+        </tr></thead>
+        <tbody id="tbody">
+          <tr class="empty-row"><td colspan="7"><div class="spinner"></div>Aguardando supervisor...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-conflito">
+  <div class="modal">
+    <h3>⚠️ Conflito de datas</h3>
+    <p>Os dias abaixo já têm registro para <strong id="conf-nome"></strong>. Deseja sobrescrever com <strong id="conf-status"></strong>?</p>
+    <div class="conflict-list" id="conf-list"></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="resolverConflito(false)">Não — manter existentes</button>
+      <button class="btn btn-blue" onclick="resolverConflito(true)">Sim — sobrescrever</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZS4N2mDgidEBEIbG5Dg91adgPX-RN8bfEAdfYxLby-vQsPG8kdP2bikHdlZDPqw_c7g/exec';
+
+const OCUPACOES = ['Rampa','Qualidade','Diagnóstico','Mesa','Driver','Serviço Especial'];
+const SC = {'Presente':'s-pres','Atraso +15min':'s-atra','Faltou':'s-falt','Afastado':'s-afas','Férias':'s-fer','Folga':'s-folg'};
+const COM_OCUP    = ['Presente','Atraso +15min'];
+const COM_PERIODO = ['Afastado','Férias'];
+const DIAS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+
+let team = [], state = {}, turnoMap = {}, dirty = false;
+let periodoQueue = [], periodoIdx = 0, periodoCallback = null;
+
+function init() {
+  const today = new Date();
+  document.getElementById('inp-data').value = fmtIn(today);
+  updateSbDate(today);
+
+  // Load turnos first then supervisores
+  call('turnos', {}, d => {
+    (d.turnos||[]).forEach(t => { turnoMap[t.id] = t.nome; });
+    call('supervisores', {}, d2 => {
+      const sel = document.getElementById('sel-sup');
+      sel.innerHTML = '<option value="">— selecione —</option>';
+      (d2.supervisores||[]).forEach(s => { const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o); });
+      const saved = localStorage.getItem('vammo_sup_v4');
+      if (saved) { sel.value = saved; onSupChange(); }
+    });
+  });
+}
+
+function onSupChange() {
+  const sup = document.getElementById('sel-sup').value;
+  if (sup) localStorage.setItem('vammo_sup_v4', sup);
+  if (!sup) return;
+  loadTeam();
+}
+function onDateChange() {
+  const dv = document.getElementById('inp-data').value;
+  if (dv) updateSbDate(new Date(dv+'T12:00:00'));
+  if (team.length > 0) loadPresencas();
+}
+function reloadPresencas() { loadPresencas(); }
+function updateSbDate(d) {
+  const dd=d.getDate(),mm=String(d.getMonth()+1).padStart(2,'0'),yy=d.getFullYear();
+  document.getElementById('sb-date').textContent=`${dd}/${mm}/${yy}`;
+  document.getElementById('sb-day').textContent=DIAS[d.getDay()];
+}
+
+function loadTeam() {
+  const sup = document.getElementById('sel-sup').value;
+  document.getElementById('tbody').innerHTML='<tr class="empty-row"><td colspan="7"><div class="spinner"></div></td></tr>';
+  call('time',{supervisor:sup},d=>{
+    team = d.time||[];
+    if (!team.length) {
+      document.getElementById('tbody').innerHTML='<tr class="empty-row"><td colspan="7">Nenhum colaborador no time — peça ao gerente configurar.</td></tr>';
+      updateStats(); return;
+    }
+    // Show turno badge
+    if (team.length > 0) {
+      const turnoId = team[0].turno;
+      const nomeT = turnoMap[turnoId] || turnoId;
+      const badge = document.getElementById('turno-badge');
+      badge.textContent = nomeT;
+      badge.style.display = '';
+    }
+    loadPresencas();
+  });
+}
+
+function loadPresencas() {
+  const sup = document.getElementById('sel-sup').value;
+  const ds  = toDisp(document.getElementById('inp-data').value);
+  call('presencasDia',{supervisor:sup,data:ds},d=>{
+    const saved = d.presencas||{};
+    const hasAny = Object.keys(saved).length > 0;
+    state = {};
+    team.forEach(emp=>{
+      state[emp.nome] = saved[emp.nome]
+        ? {...saved[emp.nome],periodoIni:'',periodoFim:''}
+        : {status:hasAny?'':'Presente',ocupacao:'',obs:'',periodoIni:'',periodoFim:''};
+    });
+    dirty=false;
+    setIndic('ok',hasAny?'Carregado':'Padrão: todos presentes');
+    renderTable();
+  });
+}
+
+function renderTable() {
+  const search=document.getElementById('search').value.toLowerCase();
+  const fs=document.getElementById('filter-st').value;
+  const sup=document.getElementById('sel-sup').value;
+  const list=team.filter(emp=>{
+    if(search&&!emp.nome.toLowerCase().includes(search))return false;
+    if(fs){const s=state[emp.nome]?.status||'';if(fs!==s)return false;}
+    return true;
+  });
+  document.getElementById('toolbar-title').textContent=`CHAMADA — ${sup} (${team.length})`;
+  if(!list.length){document.getElementById('tbody').innerHTML='<tr class="empty-row"><td colspan="7">Nenhum resultado</td></tr>';updateStats();return;}
+  const dv=document.getElementById('inp-data').value;
+  let html='';
+  list.forEach((emp,i)=>{
+    const s=state[emp.nome]||{status:'',ocupacao:'',obs:'',periodoIni:'',periodoFim:''};
+    const status=s.status, scCls=SC[status]||'';
+    const showOcup=COM_OCUP.includes(status), showPer=COM_PERIODO.includes(status);
+    const ne=enc(emp.nome);
+    const pIni=s.periodoIni||dv, pFim=s.periodoFim||dv;
+    html+=`<tr data-s="${esc(status)}" id="tr-${ne}">
+      <td style="color:var(--muted2);font-size:11px;font-weight:600">${i+1}</td>
+      <td class="nm">${emp.nome}</td>
+      <td class="sc">${emp.setor}</td>
+      <td><select class="ss ${scCls}" data-nome="${ne}" onchange="onStatus(this)">
+        <option value="">— sem status —</option>
+        <option value="Presente" ${status==='Presente'?'selected':''}>✅ Presente</option>
+        <option value="Atraso +15min" ${status==='Atraso +15min'?'selected':''}>⏰ Atraso +15min</option>
+        <option value="Faltou" ${status==='Faltou'?'selected':''}>❌ Faltou</option>
+        <option value="Afastado" ${status==='Afastado'?'selected':''}>🤕 Afastado (período)</option>
+        <option value="Férias" ${status==='Férias'?'selected':''}>🏖️ Férias (período)</option>
+        <option value="Folga" ${status==='Folga'?'selected':''}>🔘 Folga</option>
+      </select></td>
+      <td>${showOcup
+        ?`<select class="os ${s.ocupacao?'filled':''}" data-nome="${ne}" onchange="onOcup(this)">
+            <option value="">— ocupação —</option>
+            ${OCUPACOES.map(o=>`<option value="${o}" ${s.ocupacao===o?'selected':''}>${o}</option>`).join('')}
+          </select>`
+        :'<span style="font-size:11px;color:var(--muted2)">—</span>'}</td>
+      <td>${showPer
+        ?`<div class="period-cell">
+            <input type="date" value="${pIni}" data-nome="${ne}" data-tipo="ini" onchange="onPeriod(this)">
+            <span class="period-sep">até</span>
+            <input type="date" value="${pFim}" data-nome="${ne}" data-tipo="fim" onchange="onPeriod(this)">
+          </div>`
+        :'<span style="font-size:11px;color:var(--muted2)">—</span>'}</td>
+      <td><input class="obs" type="text" placeholder="Obs." maxlength="60" value="${esc(s.obs||'')}" data-nome="${ne}" oninput="onObs(this)"></td>
+    </tr>`;
+  });
+  document.getElementById('tbody').innerHTML=html;
+  updateStats();
+}
+
+function onStatus(sel) {
+  const nome=dec(sel.dataset.nome), status=sel.value;
+  Object.values(SC).forEach(c=>sel.classList.remove(c));
+  if(SC[status])sel.classList.add(SC[status]);
+  const tr=document.getElementById('tr-'+sel.dataset.nome);
+  if(tr)tr.dataset.s=status;
+  if(!state[nome])state[nome]={};
+  state[nome].status=status;
+  if(!COM_OCUP.includes(status))state[nome].ocupacao='';
+  if(!COM_PERIODO.includes(status)){state[nome].periodoIni='';state[nome].periodoFim='';}
+  renderRow(nome);
+  markDirty();
+  updateStats();
+}
+
+function renderRow(nome) {
+  const s=state[nome]||{};
+  const status=s.status||'', ne=enc(nome);
+  const scCls=SC[status]||'';
+  const showOcup=COM_OCUP.includes(status), showPer=COM_PERIODO.includes(status);
+  const dv=document.getElementById('inp-data').value;
+  const pIni=s.periodoIni||dv, pFim=s.periodoFim||dv;
+  const tr=document.getElementById('tr-'+ne);
+  if(!tr)return;
+  tr.dataset.s=status;
+  tr.children[3].innerHTML=`<select class="ss ${scCls}" data-nome="${ne}" onchange="onStatus(this)">
+    <option value="">— sem status —</option>
+    <option value="Presente" ${status==='Presente'?'selected':''}>✅ Presente</option>
+    <option value="Atraso +15min" ${status==='Atraso +15min'?'selected':''}>⏰ Atraso +15min</option>
+    <option value="Faltou" ${status==='Faltou'?'selected':''}>❌ Faltou</option>
+    <option value="Afastado" ${status==='Afastado'?'selected':''}>🤕 Afastado (período)</option>
+    <option value="Férias" ${status==='Férias'?'selected':''}>🏖️ Férias (período)</option>
+    <option value="Folga" ${status==='Folga'?'selected':''}>🔘 Folga</option>
+  </select>`;
+  tr.children[4].innerHTML=showOcup
+    ?`<select class="os ${s.ocupacao?'filled':''}" data-nome="${ne}" onchange="onOcup(this)">
+        <option value="">— ocupação —</option>
+        ${OCUPACOES.map(o=>`<option value="${o}" ${s.ocupacao===o?'selected':''}>${o}</option>`).join('')}
+      </select>`
+    :'<span style="font-size:11px;color:var(--muted2)">—</span>';
+  tr.children[5].innerHTML=showPer
+    ?`<div class="period-cell">
+        <input type="date" value="${pIni}" data-nome="${ne}" data-tipo="ini" onchange="onPeriod(this)">
+        <span class="period-sep">até</span>
+        <input type="date" value="${pFim}" data-nome="${ne}" data-tipo="fim" onchange="onPeriod(this)">
+      </div>`
+    :'<span style="font-size:11px;color:var(--muted2)">—</span>';
+}
+
+function onOcup(sel){const nome=dec(sel.dataset.nome);sel.classList.toggle('filled',!!sel.value);if(!state[nome])state[nome]={};state[nome].ocupacao=sel.value;markDirty();updateStats();}
+function onPeriod(inp){const nome=dec(inp.dataset.nome);if(!state[nome])state[nome]={};state[nome][inp.dataset.tipo==='ini'?'periodoIni':'periodoFim']=inp.value;markDirty();}
+function onObs(inp){const nome=dec(inp.dataset.nome);if(!state[nome])state[nome]={};state[nome].obs=inp.value;markDirty();}
+
+function markAll(status){
+  team.forEach(emp=>{
+    if(!state[emp.nome])state[emp.nome]={};
+    state[emp.nome].status=status;
+    if(!COM_OCUP.includes(status))state[emp.nome].ocupacao='';
+    if(!COM_PERIODO.includes(status)){state[emp.nome].periodoIni='';state[emp.nome].periodoFim='';}
+  });
+  markDirty();renderTable();
+}
+
+function updateStats(){
+  let pres=0,atra=0,falt=0,outr=0;
+  const ocupC={};
+  team.forEach(emp=>{
+    const s=state[emp.nome]?.status||'';
+    if(s==='Presente')pres++;
+    else if(s==='Atraso +15min'){atra++;pres++;}
+    else if(s==='Faltou')falt++;
+    else if(s)outr++;
+    if(COM_OCUP.includes(s)&&state[emp.nome]?.ocupacao){const o=state[emp.nome].ocupacao;ocupC[o]=(ocupC[o]||0)+1;}
+  });
+  document.getElementById('st-pres').textContent=pres;
+  document.getElementById('st-atra').textContent=atra;
+  document.getElementById('st-falt').textContent=falt;
+  document.getElementById('st-outr').textContent=outr;
+  const tot=pres||1, entries=Object.entries(ocupC).sort((a,b)=>b[1]-a[1]);
+  const el=document.getElementById('ocup-list');
+  el.innerHTML=entries.length
+    ?entries.map(([o,n])=>`<div class="ocup-row"><span class="ocup-name">${o}</span><div class="ocup-bar-bg"><div class="ocup-bar" style="width:${Math.round(n/tot*100)}%"></div></div><span class="ocup-n">${n}</span></div>`).join('')
+    :'<div style="font-size:11px;color:var(--muted)">Nenhuma registrada</div>';
+}
+
+async function salvar(){
+  const sup=document.getElementById('sel-sup').value, dv=document.getElementById('inp-data').value;
+  if(!sup){toast('⚠️ Selecione o supervisor!');return;}
+  if(!dv){toast('⚠️ Selecione a data!');return;}
+  const ds=toDisp(dv);
+  const chamada=[], periodos=[];
+  team.forEach(emp=>{
+    const s=state[emp.nome];
+    if(!s?.status)return;
+    if(COM_PERIODO.includes(s.status))periodos.push({nome:emp.nome,status:s.status,ini:toDisp(s.periodoIni||dv),fim:toDisp(s.periodoFim||dv),obs:s.obs||''});
+    else chamada.push({nome:emp.nome,status:s.status,ocupacao:s.ocupacao||'',obs:s.obs||''});
+  });
+  if(!chamada.length&&!periodos.length){toast('⚠️ Nenhum status preenchido!');return;}
+  const btn=document.getElementById('btn-salvar');
+  btn.disabled=true;btn.textContent='⏳ Salvando...';
+  if(chamada.length)await callAsync('salvarChamada',{supervisor:sup,data:ds,chamada:JSON.stringify(chamada)});
+  if(periodos.length){
+    periodoQueue=periodos;periodoIdx=0;
+    periodoCallback=()=>{btn.disabled=false;btn.textContent='💾 Salvar Chamada';dirty=false;setIndic('ok',`Salvo — ${ds}`);toast(`✅ Chamada salva!`);loadPresencas();};
+    processNextPeriodo(sup);
+  } else {btn.disabled=false;btn.textContent='💾 Salvar Chamada';dirty=false;setIndic('ok',`Salvo — ${ds}`);toast(`✅ ${chamada.length} registros salvos!`);loadPresencas();}
+}
+
+function processNextPeriodo(sup){
+  if(periodoIdx>=periodoQueue.length){periodoCallback?.();return;}
+  const p=periodoQueue[periodoIdx];
+  call('checkConflitos',{nome:p.nome,inicio:p.ini,fim:p.fim},d=>{
+    if(d.conflitos?.length){
+      document.getElementById('conf-nome').textContent=p.nome;
+      document.getElementById('conf-status').textContent=p.status;
+      document.getElementById('conf-list').innerHTML=d.conflitos.map(c=>`<div>${c}</div>`).join('');
+      document.getElementById('modal-conflito').classList.add('open');
+      window._cs=sup;
+    } else {
+      salvarPI(p,false,sup,()=>{periodoIdx++;processNextPeriodo(sup);});
+    }
+  });
+}
+function resolverConflito(ow){
+  document.getElementById('modal-conflito').classList.remove('open');
+  const p=periodoQueue[periodoIdx];
+  salvarPI(p,ow,window._cs,()=>{periodoIdx++;processNextPeriodo(window._cs);});
+}
+function salvarPI(p,ow,sup,cb){
+  call('salvarPeriodo',{nome:p.nome,status:p.status,inicio:p.ini,fim:p.fim,supervisor:sup,overwrite:ow.toString()},d=>{
+    if(d.ok)toast(`✅ ${p.nome}: ${p.status} — ${d.saved} dias`);cb?.();
+  });
+}
+
+function fmtIn(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function toDisp(v){const[y,m,d]=v.split('-');return `${d}/${m}/${y}`;}
+function enc(s){return encodeURIComponent(s);}
+function dec(s){return decodeURIComponent(s);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
+function markDirty(){dirty=true;setIndic('dirty','Não salvo');}
+function setIndic(st,msg){['save-ind','save-ind2'].forEach(id=>{const el=document.getElementById(id);el.classList.remove('hidden','ok','dirty');el.classList.add(st);el.textContent=st==='ok'?'✓ '+msg:'● '+msg;});}
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+
+let _n=0;
+function call(action,params,cb){
+  const cbName='_vs'+(++_n);
+  const qs=Object.entries({...params,action,callback:cbName}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+  const sc=document.createElement('script');
+  const to=setTimeout(()=>{toast('❌ Timeout');delete window[cbName];sc.remove();},15000);
+  window[cbName]=data=>{clearTimeout(to);delete window[cbName];sc.remove();cb(data);};
+  sc.onerror=()=>{clearTimeout(to);toast('❌ Erro de conexão');delete window[cbName];sc.remove();};
+  sc.src=SCRIPT_URL+'?'+qs;document.head.appendChild(sc);
+}
+function callAsync(a,p){return new Promise(r=>call(a,p,r));}
+let _tt;
+function toast(msg,dur=3500){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),dur);}
+
+init();
+</script>
+</body>
+</html>

@@ -537,6 +537,10 @@ function cfgTab(tab,btn){
   btn.classList.add('active');
   document.querySelectorAll('.cfg-content').forEach(c=>c.classList.remove('active'));
   document.getElementById('cfg-'+tab).classList.add('active');
+  // Carrega dados ao trocar de aba
+  if(tab==='cols') loadCols();
+  if(tab==='sups') loadCfgSups();
+  if(tab==='turnos') loadTurnos();
 }
 
 // ════ PRESETS ════
@@ -759,12 +763,16 @@ function loadCfgSups(){
 function renderSupCfgList(){
   const el=document.getElementById('sup-list-cfg');
   if(!sups.length){el.innerHTML='<div class="empty-st">Nenhum supervisor</div>';return;}
+  // Monta lista sem fazer chamadas concorrentes — contagem aparece ao selecionar
   el.innerHTML=sups.map(s=>`
-    <div class="team-item ${selSup===s?'in':''}" onclick="selectSup('${enc(s)}')" style="${selSup===s?'background:var(--blue-d);border-left:3px solid var(--blue);':''}" >
-      <div><div class="team-nm">${s}</div><div class="team-s" id="sc-${enc(s)}">...</div></div>
+    <div class="team-item ${selSup===s?'in':''}" onclick="selectSup('${enc(s)}')"
+      style="${selSup===s?'background:var(--blue-d);border-left:3px solid var(--blue);':''}">
+      <div>
+        <div class="team-nm">${s}</div>
+        <div class="team-s" id="sc-${enc(s)}">${selSup===s&&teamData.length?teamData.length+' mecânicos':'clique para ver o time'}</div>
+      </div>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="event.stopPropagation();remSup('${enc(s)}')" style="color:var(--muted2);">🗑️</button>
     </div>`).join('');
-  sups.forEach(s=>call('time',{supervisor:s},d=>{const el=document.getElementById('sc-'+enc(s));if(el)el.textContent=(d.time||[]).length+' mecânicos';}));
 }
 function selectSup(supEnc){
   selSup=dec(supEnc);
@@ -775,8 +783,18 @@ function selectSup(supEnc){
 function loadTeamCfg(sup){
   document.getElementById('team-area').innerHTML='<div class="empty-st"><div class="spinner"></div></div>';
   let al=false,tl=false;
-  call('colaboradores',{},d=>{allCols=d.colaboradores||[];al=true;if(tl)renderTeamCfg();});
-  call('time',{supervisor:sup},d=>{teamData=d.time||[];tl=true;if(al)renderTeamCfg();});
+  call('colaboradores',{},d=>{
+    allCols=d.colaboradores||[];al=true;
+    if(tl){renderTeamCfg();updateSupCount();}
+  });
+  call('time',{supervisor:sup},d=>{
+    teamData=d.time||[];tl=true;
+    if(al){renderTeamCfg();updateSupCount();}
+  });
+}
+function updateSupCount(){
+  const el=document.getElementById('sc-'+enc(selSup));
+  if(el) el.textContent=teamData.length+' mecânicos';
 }
 function renderTeamCfg(){
   const tn=new Set(teamData.map(e=>e.nome));

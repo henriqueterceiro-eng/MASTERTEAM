@@ -435,16 +435,41 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
     <div class="cfg-content" id="cfg-cols">
       <div class="panel-hd">
         <div class="panel-title">Colaboradores</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" class="search-box" placeholder="Buscar..." id="col-s" oninput="filterCols()" style="width:180px;">
-          <select id="col-tf" onchange="filterCols()"><option value="">Todos turnos</option><option value="Primeiro">1º Turno</option><option value="Segundo">2º Turno</option></select>
-          <button class="btn btn-blue btn-sm" onclick="openModal('modal-col');document.getElementById('modal-col-title').textContent='NOVO COLABORADOR';document.getElementById('col-orig').value='';">+ Novo</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="text" class="search-box" placeholder="🔍 Buscar por nome..." id="col-s" oninput="filterCols()" style="width:200px;">
+          <select id="col-tf" onchange="filterCols()" style="min-width:130px;">
+            <option value="">Todos os turnos</option>
+          </select>
+          <select id="col-sf" onchange="filterCols()">
+            <option value="">Todos setores</option>
+            <option>Oficina</option><option>Qualidade</option>
+            <option>Serviço Especiais</option><option>Engenharia</option><option>Treinamento</option>
+          </select>
+          <select id="col-stf" onchange="filterCols()">
+            <option value="">Ativos + Inativos</option>
+            <option value="Ativo">Só Ativos</option>
+            <option value="Inativo">Só Inativos</option>
+          </select>
+          <button class="btn btn-blue btn-sm" onclick="abrirNovoCol()">+ Novo Colaborador</button>
         </div>
+      </div>
+      <!-- contador -->
+      <div style="padding:6px 20px;background:var(--bg);border-bottom:1px solid var(--b1);font-size:11px;color:var(--muted);flex-shrink:0;">
+        <span id="col-count">—</span>
       </div>
       <div class="cols-tw">
         <table>
-          <thead><tr><th>Nome</th><th>Turno</th><th>Setor</th><th>Status</th><th>Ações</th></tr></thead>
-          <tbody id="cols-body"><tr><td colspan="5"><div class="spinner" style="margin:40px auto;"></div></td></tr></tbody>
+          <thead><tr>
+            <th>#</th>
+            <th>Nome</th>
+            <th>Turno</th>
+            <th>Setor</th>
+            <th>Status</th>
+            <th style="text-align:center">Ações</th>
+          </tr></thead>
+          <tbody id="cols-body">
+            <tr><td colspan="6"><div class="spinner" style="margin:40px auto;"></div></td></tr>
+          </tbody>
         </table>
       </div>
     </div>
@@ -484,19 +509,40 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 </div>
 
 <div class="modal-bg" id="modal-col">
-  <div class="modal">
+  <div class="modal" style="max-width:460px;">
     <h3 id="modal-col-title">NOVO COLABORADOR</h3>
-    <div class="form-r"><div class="form-l">Nome</div><input type="text" id="col-nome" placeholder="Nome completo"></div>
-    <div class="form-r"><div class="form-l">Turno</div>
-      <select id="col-turno"><option value="Primeiro">Primeiro</option><option value="Segundo">Segundo</option></select>
+    <div class="form-r">
+      <div class="form-l">Nome completo</div>
+      <input type="text" id="col-nome" placeholder="Ex: João da Silva" autocomplete="off">
     </div>
-    <div class="form-r"><div class="form-l">Setor</div>
-      <select id="col-setor"><option>Oficina</option><option>Qualidade</option><option>Serviço Especiais</option><option>Engenharia</option><option>Treinamento</option></select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-r">
+        <div class="form-l">Turno</div>
+        <select id="col-turno" style="width:100%;">
+          <option value="Primeiro">Primeiro</option>
+          <option value="Segundo">Segundo</option>
+        </select>
+      </div>
+      <div class="form-r">
+        <div class="form-l">Setor</div>
+        <select id="col-setor" style="width:100%;">
+          <option>Oficina</option>
+          <option>Qualidade</option>
+          <option>Serviço Especiais</option>
+          <option>Engenharia</option>
+          <option>Treinamento</option>
+        </select>
+      </div>
+    </div>
+    <!-- aviso migração -->
+    <div id="col-migracao-aviso" style="display:none;margin-top:8px;padding:8px 12px;background:var(--yellow-d);border:1px solid rgba(245,184,0,.3);border-radius:8px;font-size:11px;color:var(--orange);">
+      ⚠️ Você está alterando o turno deste colaborador. O histórico de presenças anteriores não será alterado.
     </div>
     <input type="hidden" id="col-orig">
+    <input type="hidden" id="col-turno-orig">
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-col')">Cancelar</button>
-      <button class="btn btn-blue" onclick="salvarCol()">💾 Salvar</button>
+      <button class="btn btn-blue" id="btn-salvar-col" onclick="salvarCol()">💾 Salvar</button>
     </div>
   </div>
 </div>
@@ -504,7 +550,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZS4N2mDgidEBEIbG5Dg91adgPX-RN8bfEAdfYxLby-vQsPG8kdP2bikHdlZDPqw_c7g/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzv_WjXnfW-1N1vqQLRxkrQWTmhc-lqAyRtwMzSMaEbMfrsiyXudIPexMtiG_5-cssa/exec';
 
 let sups=[], allCols=[], teamData=[], selSup=null;
 let turnoMap={}, turnosData=[];
@@ -863,47 +909,197 @@ function remSup(ne){
 }
 
 // ════ CONFIG — COLABORADORES ════
-function loadCols(){call('colaboradores',{},d=>{allCols=d.colaboradores||[];renderCols();});}
-function filterCols(){renderCols();}
-function renderCols(){
-  const s=document.getElementById('col-s').value.toLowerCase();
-  const t=document.getElementById('col-tf').value;
-  const list=allCols.filter(e=>(!s||e.nome.toLowerCase().includes(s))&&(!t||e.turno===t));
-  document.getElementById('cols-body').innerHTML=list.length
-    ?list.map((e,i)=>`<tr>
-      <td style="border-radius:10px 0 0 10px"><span style="color:var(--muted2);font-size:11px;margin-right:8px">${i+1}</span><strong>${e.nome}</strong></td>
-      <td><span class="badge b-blue" style="font-size:10px">${turnoNome(e.turno)||e.turno}</span></td>
-      <td style="font-size:11px;color:var(--muted)">${e.setor}</td>
-      <td><span class="badge ${e.status==='Ativo'?'b-green':'b-gray'}">${e.status}</span></td>
-      <td style="border-radius:0 10px 10px 0;display:flex;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="editCol('${enc(e.nome)}')">✏️</button>
-        <button class="btn btn-ghost btn-sm" onclick="toggleColSt('${enc(e.nome)}','${e.status}')" style="color:${e.status==='Ativo'?'var(--red)':'var(--green)'};">${e.status==='Ativo'?'🔴':'🟢'}</button>
-      </td>
-    </tr>`).join('')
-    :'<tr><td colspan="5" class="empty-st">Nenhum resultado</td></tr>';
-}
-function editCol(ne){
-  const emp=allCols.find(e=>e.nome===dec(ne));if(!emp)return;
-  document.getElementById('modal-col-title').textContent='EDITAR COLABORADOR';
-  document.getElementById('col-nome').value=emp.nome;
-  document.getElementById('col-turno').value=emp.turno;
-  document.getElementById('col-setor').value=emp.setor;
-  document.getElementById('col-orig').value=emp.nome;
-  openModal('modal-col');
-}
-function salvarCol(){
-  const nome=document.getElementById('col-nome').value.trim();
-  const turno=document.getElementById('col-turno').value;
-  const setor=document.getElementById('col-setor').value;
-  const orig=document.getElementById('col-orig').value;
-  if(!nome){toast('⚠️ Digite o nome');return;}
-  call(orig?'editCol':'addCol',orig?{nome,turno,setor,nomeOriginal:orig}:{nome,turno,setor},d=>{
-    if(d.error){toast('❌ '+d.error);return;}
-    closeModal('modal-col');loadCols();toast('✅ Salvo!');
+// ════ CONFIG — COLABORADORES ════
+function loadCols() {
+  call('colaboradores', {}, d => {
+    allCols = d.colaboradores || [];
+    populateColFilters();
+    renderCols();
   });
 }
-function toggleColSt(ne,st){
-  call('toggleCol',{nome:dec(ne),ativo:(st!=='Ativo').toString()},d=>{if(d.ok){loadCols();toast('✅ Status atualizado');}});
+
+function populateColFilters() {
+  // Turno filter — usa nomes reais dos turnos
+  const sel = document.getElementById('col-tf');
+  const cur = sel.value;
+  const ids  = [...new Set(allCols.map(e => e.turno))].sort();
+  sel.innerHTML = '<option value="">Todos os turnos</option>';
+  ids.forEach(id => {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = turnoNome(id) || id;
+    sel.appendChild(o);
+  });
+  if (cur) sel.value = cur;
+
+  // Também atualiza o dropdown dentro do modal de colaborador
+  populateColTurnoModal();
+}
+
+function populateColTurnoModal() {
+  // Usa os turnos cadastrados em turnosData
+  const sel = document.getElementById('col-turno');
+  const cur = sel.value;
+  if (turnosData.length) {
+    sel.innerHTML = '';
+    turnosData.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = t.nome + (t.base && t.base !== 'Principal' ? ' — ' + t.base : '');
+      sel.appendChild(o);
+    });
+  }
+  // Garante que IDs sem turno cadastrado ainda aparecem
+  const ids = [...new Set(allCols.map(e => e.turno))];
+  ids.forEach(id => {
+    if (![...sel.options].find(o => o.value === id)) {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = id;
+      sel.appendChild(o);
+    }
+  });
+  if (cur) sel.value = cur;
+}
+
+function filterCols() { renderCols(); }
+
+function renderCols() {
+  const s   = document.getElementById('col-s').value.toLowerCase().trim();
+  const t   = document.getElementById('col-tf').value;
+  const sec = document.getElementById('col-sf').value;
+  const st  = document.getElementById('col-stf').value;
+
+  let list = allCols.filter(e => {
+    if (s   && !e.nome.toLowerCase().includes(s)) return false;
+    if (t   && e.turno  !== t)   return false;
+    if (sec && e.setor  !== sec) return false;
+    if (st  && e.status !== st)  return false;
+    return true;
+  });
+
+  // Sort: ativos primeiro, depois por nome
+  list.sort((a,b) => {
+    if (a.status !== b.status) return a.status === 'Ativo' ? -1 : 1;
+    return a.nome.localeCompare(b.nome);
+  });
+
+  document.getElementById('col-count').textContent =
+    `${list.length} colaborador${list.length!==1?'es':''} exibido${list.length!==1?'s':''} · ${allCols.filter(e=>e.status==='Ativo').length} ativos no total`;
+
+  if (!list.length) {
+    document.getElementById('cols-body').innerHTML =
+      '<tr><td colspan="6" class="empty-st">Nenhum resultado. Ajuste os filtros.</td></tr>';
+    return;
+  }
+
+  document.getElementById('cols-body').innerHTML = list.map((e, i) => {
+    const isAtivo = e.status === 'Ativo';
+    const tNome   = turnoNome(e.turno) || e.turno;
+    return `<tr style="opacity:${isAtivo?1:0.55}">
+      <td style="border-radius:10px 0 0 10px;color:var(--muted2);font-size:11px;width:36px">${i+1}</td>
+      <td>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700">${e.nome}</div>
+      </td>
+      <td><span class="badge b-blue" style="font-size:10px;">${tNome}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${e.setor}</td>
+      <td><span class="badge ${isAtivo?'b-green':'b-gray'}">${isAtivo?'Ativo':'Inativo'}</span></td>
+      <td style="border-radius:0 10px 10px 0;text-align:center;">
+        <div style="display:flex;gap:5px;justify-content:center;">
+          <button class="btn btn-ghost btn-sm" onclick="editCol('${enc(e.nome)}')" title="Editar">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleColSt('${enc(e.nome)}','${e.status}')"
+            style="color:${isAtivo?'var(--red)':'var(--green)'};" title="${isAtivo?'Desativar':'Reativar'}">
+            ${isAtivo?'🔴 Desativar':'🟢 Reativar'}
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirNovoCol() {
+  populateColTurnoModal();
+  document.getElementById('modal-col-title').textContent = 'NOVO COLABORADOR';
+  document.getElementById('col-nome').value  = '';
+  document.getElementById('col-orig').value  = '';
+  document.getElementById('col-turno-orig').value = '';
+  document.getElementById('col-migracao-aviso').style.display = 'none';
+  document.getElementById('col-turno').onchange = null;
+  openModal('modal-col');
+  setTimeout(() => document.getElementById('col-nome').focus(), 80);
+}
+
+function editCol(ne) {
+  const emp = allCols.find(e => e.nome === dec(ne));
+  if (!emp) return;
+
+  populateColTurnoModal();
+
+  document.getElementById('modal-col-title').textContent = 'EDITAR COLABORADOR';
+  document.getElementById('col-nome').value      = emp.nome;
+  document.getElementById('col-setor').value     = emp.setor;
+  document.getElementById('col-orig').value      = emp.nome;
+  document.getElementById('col-turno-orig').value = emp.turno;
+  document.getElementById('col-migracao-aviso').style.display = 'none';
+
+  // Set turno — aguarda o select ser populado
+  setTimeout(() => {
+    const sel = document.getElementById('col-turno');
+    sel.value = emp.turno;
+    // Se não achou a opção (turno antigo), adiciona temporariamente
+    if (sel.value !== emp.turno) {
+      const o = document.createElement('option');
+      o.value = emp.turno; o.textContent = emp.turno;
+      sel.appendChild(o); sel.value = emp.turno;
+    }
+
+    // Aviso se mudar turno
+    sel.onchange = () => {
+      const aviso = document.getElementById('col-migracao-aviso');
+      aviso.style.display = sel.value !== emp.turno ? 'block' : 'none';
+    };
+  }, 30);
+
+  openModal('modal-col');
+  setTimeout(() => document.getElementById('col-nome').focus(), 80);
+}
+
+function salvarCol() {
+  const nome  = document.getElementById('col-nome').value.trim();
+  const turno = document.getElementById('col-turno').value;
+  const setor = document.getElementById('col-setor').value;
+  const orig  = document.getElementById('col-orig').value;
+
+  if (!nome) { toast('⚠️ Digite o nome do colaborador'); return; }
+  if (!turno){ toast('⚠️ Selecione o turno'); return; }
+
+  const btn = document.getElementById('btn-salvar-col');
+  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+
+  const isEdit = !!orig;
+  const params = isEdit
+    ? { nome, turno, setor, nomeOriginal: orig }
+    : { nome, turno, setor };
+
+  call(isEdit ? 'editCol' : 'addCol', params, d => {
+    btn.disabled = false; btn.textContent = '💾 Salvar';
+    if (d.error) { toast('❌ ' + d.error); return; }
+    closeModal('modal-col');
+    loadCols();
+    toast(isEdit
+      ? `✅ ${nome} atualizado!`
+      : `✅ ${nome} cadastrado com sucesso!`);
+  });
+}
+
+function toggleColSt(ne, st) {
+  const nome  = dec(ne);
+  const novoSt = st === 'Ativo' ? 'false' : 'true';
+  const acao   = st === 'Ativo' ? 'desativar' : 'reativar';
+  if (!confirm(`Deseja ${acao} o colaborador ${nome}?`)) return;
+  call('toggleCol', { nome, ativo: novoSt }, d => {
+    if (d.ok) { loadCols(); toast(`✅ ${nome} ${st==='Ativo'?'desativado':'reativado'}!`); }
+    else toast('❌ Erro ao atualizar status');
+  });
 }
 
 // ════ EXPORT ════

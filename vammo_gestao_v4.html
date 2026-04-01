@@ -711,7 +711,7 @@ function renderTurnos(){
         <div style="display:flex;gap:8px;align-items:center;">
           <span class="turno-badge-pill">${t.base||'Principal'}</span>
           <button class="btn btn-ghost btn-sm" onclick="editTurno('${enc(t.id)}','${enc(t.nome)}','${enc(t.base||'Principal')}')">✏️</button>
-          <button class="btn btn-ghost btn-sm" onclick="remTurno('${enc(t.id)}','${enc(t.base||\'Principal\')}')" style="color:var(--red)">🗑️</button>
+          <button class="btn btn-ghost btn-sm" onclick="remTurno('${enc(t.id)}','${enc(t.base||String.fromCharCode(80,114,105,110,99,105,112,97,108))}')" style="color:var(--red)">🗑️</button>
         </div>
       </div>`).join('')}
     </div>`;

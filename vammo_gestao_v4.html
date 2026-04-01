@@ -152,6 +152,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 .cfg-tab-s{font-size:10px;color:var(--muted);}
 .cfg-content{display:none;flex-direction:column;overflow:hidden;}
 .cfg-content.active{display:flex;}
+.cfg-content.cfg-sups.active{display:grid;grid-template-columns:260px 1fr;}
 
 /* TEAM COLS */
 .team-cols{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;}
@@ -413,7 +414,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
     </div>
 
     <!-- SUPERVISORES + TIMES -->
-    <div class="cfg-content" id="cfg-sups" style="display:grid;grid-template-columns:260px 1fr;overflow:hidden;">
+    <div class="cfg-content cfg-sups" id="cfg-sups">
       <div style="background:var(--white);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden;">
         <div class="panel-hd">
           <div class="panel-title">Supervisores</div>
@@ -584,18 +585,31 @@ function goPage(id,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   btn.classList.add('active');
-  if(id==='cfg'){loadTurnos();loadCfgSups();if(!allCols.length)loadCols();}
+  if(id==='cfg'){
+    loadTurnos();
+    loadCfgSups();
+    // Garante que a aba ativa (turnos por padrão) está com display correto
+    document.querySelectorAll('.cfg-content').forEach(c=>{ c.style.display='none'; });
+    document.getElementById('cfg-turnos').style.display = 'flex';
+  }
 }
 
-function cfgTab(tab,btn){
-  document.querySelectorAll('.cfg-tab').forEach(b=>b.classList.remove('active'));
+function cfgTab(tab, btn){
+  document.querySelectorAll('.cfg-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelectorAll('.cfg-content').forEach(c=>c.classList.remove('active'));
-  document.getElementById('cfg-'+tab).classList.add('active');
-  // Carrega dados ao trocar de aba
-  if(tab==='cols') loadCols();
-  if(tab==='sups') loadCfgSups();
-  if(tab==='turnos') loadTurnos();
+  // Remove active de todos e reseta display
+  document.querySelectorAll('.cfg-content').forEach(c => {
+    c.classList.remove('active');
+    c.style.display = 'none';
+  });
+  // Ativa o correto com o display certo
+  const el = document.getElementById('cfg-' + tab);
+  el.classList.add('active');
+  el.style.display = tab === 'sups' ? 'grid' : 'flex';
+  // Carrega dados
+  if (tab === 'cols')    loadCols();
+  if (tab === 'sups')    loadCfgSups();
+  if (tab === 'turnos')  loadTurnos();
 }
 
 // ════ PRESETS ════

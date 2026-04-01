@@ -103,7 +103,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 .b-blue{background:var(--blue-d);color:var(--blue);border-color:var(--blue-b);}
 
 /* DASH */
-.dash-body{flex:1;display:grid;grid-template-columns:1fr 300px;grid-template-rows:auto 1fr;gap:0;overflow:hidden;}
+.dash-body{flex:1;display:grid;grid-template-columns:1fr 300px;gap:0;overflow:hidden;}
 .dash-main{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--b1);}
 .dash-side{background:var(--white);display:flex;flex-direction:column;overflow:hidden;}
 .panel-hd{padding:12px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;background:var(--white);flex-shrink:0;}
@@ -249,30 +249,39 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
   </div>
 
   <div class="dash-body">
-    <!-- GRÁFICO DE ABSENTEÍSMO -->
-    <div style="grid-column:1/-1;background:var(--white);border-bottom:1px solid var(--b1);padding:0;flex-shrink:0;display:flex;flex-direction:column;">
-      <div class="panel-hd" style="padding:10px 20px;">
-        <div class="panel-title">📈 Absenteísmo Semanal</div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <select id="chart-semanas" style="font-size:11px;padding:4px 8px;">
-            <option value="8">Últimas 8 semanas</option>
-            <option value="12">Últimas 12 semanas</option>
-            <option value="16">Últimas 16 semanas</option>
-          </select>
-          <button class="btn btn-blue btn-sm" onclick="loadChart()">📊 Carregar Gráfico</button>
-          <div id="chart-media" style="font-size:11px;color:var(--muted);"></div>
-        </div>
-      </div>
-      <div style="padding:0 20px 14px;position:relative;height:160px;" id="chart-wrap">
-        <canvas id="abs-chart" style="width:100%;height:100%;display:block;"></canvas>
-        <div id="chart-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;">
-          <span style="font-size:12px;color:var(--muted)">Clique em "Carregar Gráfico" para ver o absenteísmo semanal.<br><small style="color:var(--muted2)">Requer Apps Script atualizado e redeployado.</small></span>
-        </div>
-        <div id="chart-tooltip" style="display:none;position:absolute;background:var(--text);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-md);"></div>
-      </div>
-    </div>
+    <!-- COLUNA ESQUERDA: gráfico + tabela -->
     <div class="dash-main">
-      <div class="panel-hd">
+      <!-- GRÁFICO -->
+      <div style="background:var(--white);border-bottom:1px solid var(--b1);flex-shrink:0;">
+        <div class="panel-hd" style="padding:9px 16px;">
+          <div class="panel-title">📈 Absenteísmo Semanal</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <!-- Presets semanas -->
+            <div style="display:flex;gap:4px;">
+              <button class="preset active" id="ps-1" onclick="setChartPreset(1,this)">1 sem</button>
+              <button class="preset" id="ps-4" onclick="setChartPreset(4,this)">4 sem</button>
+              <button class="preset" id="ps-8" onclick="setChartPreset(8,this)">8 sem</button>
+            </div>
+            <div style="width:1px;height:16px;background:var(--b2);"></div>
+            <!-- Toggle Total / Ajustado -->
+            <div style="display:flex;gap:4px;">
+              <button class="preset active" id="mode-total" onclick="setChartMode('total',this)" style="border-color:var(--blue);color:var(--blue);background:var(--blue-d);">Total</button>
+              <button class="preset" id="mode-ajust" onclick="setChartMode('ajust',this)">Ajustado</button>
+            </div>
+            <div id="chart-media" style="font-size:11px;color:var(--muted);"></div>
+            <button class="btn btn-blue btn-sm" onclick="loadChart()">↺</button>
+          </div>
+        </div>
+        <div style="padding:0 16px 12px;position:relative;height:148px;" id="chart-wrap">
+          <canvas id="abs-chart" style="width:100%;height:100%;display:block;"></canvas>
+          <div id="chart-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:11px;color:var(--muted)">Clique em ↺ para carregar o gráfico</span>
+          </div>
+          <div id="chart-tooltip" style="display:none;position:absolute;background:var(--text);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-md);z-index:10;"></div>
+        </div>
+      </div>
+      <!-- TABELA DETALHE -->
+      <div class="panel-hd" style="flex-shrink:0;">
         <div class="panel-title">Detalhe por colaborador</div>
         <input type="text" class="search-box" placeholder="Buscar..." id="dash-s" oninput="filterDash()" style="width:180px;">
       </div>
@@ -945,223 +954,167 @@ let _tt;
 function toast(msg,dur=3500){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),dur);}
 
 // ════ GRÁFICO ABSENTEÍSMO ════
-let chartData = [];
+let chartData    = [];
 let chartLoading = false;
+let chartSemanas = 8;
+let chartMode    = 'total';
+
+function setChartPreset(n, btn) {
+  chartSemanas = n;
+  ['ps-1','ps-4','ps-8'].forEach(id => {
+    const el=document.getElementById(id);
+    el.classList.remove('active');
+    el.style.borderColor=''; el.style.color=''; el.style.background='';
+  });
+  btn.style.borderColor='var(--blue)'; btn.style.color='var(--blue)'; btn.style.background='var(--blue-d)';
+  loadChart();
+}
+
+function setChartMode(mode, btn) {
+  chartMode = mode;
+  ['mode-total','mode-ajust'].forEach(id => {
+    const el=document.getElementById(id);
+    el.classList.remove('active');
+    el.style.borderColor=''; el.style.color=''; el.style.background='';
+  });
+  btn.style.borderColor='var(--blue)'; btn.style.color='var(--blue)'; btn.style.background='var(--blue-d)';
+  if (chartData.length) drawChart(chartData);
+}
 
 function loadChart() {
   if (chartLoading) return;
   chartLoading = true;
-
-  const sup    = document.getElementById('dash-sup').value;
-  const semanas= document.getElementById('chart-semanas').value;
+  const sup = document.getElementById('dash-sup').value;
   const loadEl = document.getElementById('chart-loading');
-  const mediaEl= document.getElementById('chart-media');
-
   loadEl.style.display = 'flex';
-  loadEl.innerHTML = '<div class="spinner"></div>';
-  mediaEl.textContent = '';
+  loadEl.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px;"></div>';
+  document.getElementById('chart-media').textContent = '';
 
-  // Timeout próprio de 12s — não bloqueia o resto
   const timer = setTimeout(() => {
     chartLoading = false;
-    loadEl.style.display = 'flex';
-    loadEl.innerHTML = '<span style="font-size:11px;color:var(--muted)">⚠️ Gráfico indisponível — atualize o Apps Script e redeploye</span>';
-  }, 12000);
+    loadEl.innerHTML = '<span style="font-size:11px;color:var(--muted)">⚠️ Timeout — redeploye o Apps Script</span>';
+  }, 14000);
 
-  call('absenteismoSemanal', { semanas, supervisor: sup, turno: 'Todos' }, d => {
+  call('absenteismoSemanal', { semanas: chartSemanas, supervisor: sup, turno: 'Todos' }, d => {
     clearTimeout(timer);
     chartLoading = false;
+    if (d.error || !d.semanas) {
+      loadEl.innerHTML = `<span style="font-size:11px;color:var(--red)">❌ ${d.error||'Sem dados'}</span>`;
+      return;
+    }
     loadEl.style.display = 'none';
-    if (d.error) {
-      loadEl.style.display = 'flex';
-      loadEl.innerHTML = `<span style="font-size:11px;color:var(--red)">❌ ${d.error}</span>`;
-      return;
-    }
-    chartData = d.semanas || [];
-    if (!chartData.length) {
-      loadEl.style.display = 'flex';
-      loadEl.innerHTML = '<span style="font-size:11px;color:var(--muted)">Sem dados suficientes para o gráfico</span>';
-      return;
-    }
+    chartData = d.semanas;
     drawChart(chartData);
   });
 }
 
 function drawChart(semanas) {
-  const wrap  = document.getElementById('chart-wrap');
-  const canvas= document.getElementById('abs-chart');
-  const dpr   = window.devicePixelRatio || 1;
-  const W     = wrap.clientWidth;
-  const H     = wrap.clientHeight - 0;
+  const wrap=document.getElementById('chart-wrap');
+  const canvas=document.getElementById('abs-chart');
+  const dpr=window.devicePixelRatio||1;
+  const W=wrap.clientWidth, H=wrap.clientHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
 
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
-  canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
+  const isAjust = chartMode==='ajust';
+  const pts_raw = semanas.map(s=>({...s, val: isAjust&&s.pctAjust!==undefined ? s.pctAjust : s.pct}));
+  const PAD={top:18,right:14,bottom:36,left:40};
+  const cW=W-PAD.left-PAD.right, cH=H-PAD.top-PAD.bottom;
+  const N=pts_raw.length;
+  const withVal=pts_raw.filter(p=>p.val!==null&&p.val!==undefined);
+  if(!withVal.length) return;
 
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, W, H);
+  const maxV=Math.max(...withVal.map(p=>p.val),5);
+  const yMax=Math.ceil((maxV+2)/5)*5;
+  const yTk=4;
 
-  const PAD = { top: 14, right: 20, bottom: 38, left: 44 };
-  const cW = W - PAD.left - PAD.right;
-  const cH = H - PAD.top  - PAD.bottom;
-
-  // Filter weeks with data
-  const withData = semanas.filter(s => s.pct !== null);
-
-  // Y axis: 0 to max+buffer, minimum 10%
-  const maxPct   = withData.length ? Math.max(...withData.map(s => s.pct), 5) : 10;
-  const yMax     = Math.ceil((maxPct + 2) / 5) * 5;
-  const yTicks   = 5;
-
-  // Grid lines + Y labels
-  ctx.font = '10px Barlow, sans-serif';
-  ctx.fillStyle = '#6B8299';
-  ctx.textAlign = 'right';
-
-  for (let i = 0; i <= yTicks; i++) {
-    const val = (yMax / yTicks) * i;
-    const y   = PAD.top + cH - (val / yMax) * cH;
-    // grid line
+  ctx.font='10px Barlow,sans-serif';
+  for(let i=0;i<=yTk;i++){
+    const v=(yMax/yTk)*i, y=PAD.top+cH-(v/yMax)*cH;
     ctx.beginPath();
-    ctx.strokeStyle = i === 0 ? '#C8D6E8' : '#E4ECF4';
-    ctx.lineWidth   = i === 0 ? 1.5 : 1;
-    ctx.moveTo(PAD.left, y);
-    ctx.lineTo(PAD.left + cW, y);
-    ctx.stroke();
-    // label
-    ctx.fillText(val.toFixed(0) + '%', PAD.left - 6, y + 4);
+    ctx.strokeStyle=i===0?'#C8D6E8':'#EEF2F7'; ctx.lineWidth=1;
+    ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+cW,y); ctx.stroke();
+    ctx.fillStyle='#7A8FA6'; ctx.textAlign='right';
+    ctx.fillText(v.toFixed(0)+'%',PAD.left-5,y+4);
   }
 
-  if (semanas.length === 0) return;
-
-  const N     = semanas.length;
-  const xStep = cW / (N - 1 || 1);
-
-  // Points
-  const pts = semanas.map((s, i) => ({
-    x: PAD.left + i * xStep,
-    y: s.pct !== null ? PAD.top + cH - (s.pct / yMax) * cH : null,
-    ...s
+  const xStep=N>1?cW/(N-1):cW;
+  const pts=pts_raw.map((s,i)=>({
+    ...s,
+    x:PAD.left+i*xStep,
+    y:(s.val!==null&&s.val!==undefined)?PAD.top+cH-(s.val/yMax)*cH:null
   }));
+  const valid=pts.filter(p=>p.y!==null);
 
-  // Area fill
-  const validPts = pts.filter(p => p.y !== null);
-  if (validPts.length >= 2) {
+  if(valid.length>=2){
     ctx.beginPath();
-    ctx.moveTo(validPts[0].x, PAD.top + cH);
-    validPts.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.lineTo(validPts[validPts.length-1].x, PAD.top + cH);
+    ctx.moveTo(valid[0].x,PAD.top+cH);
+    valid.forEach(p=>ctx.lineTo(p.x,p.y));
+    ctx.lineTo(valid[valid.length-1].x,PAD.top+cH);
     ctx.closePath();
-    const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + cH);
-    grad.addColorStop(0, 'rgba(46,194,255,0.18)');
-    grad.addColorStop(1, 'rgba(46,194,255,0)');
-    ctx.fillStyle = grad;
-    ctx.fill();
+    const g=ctx.createLinearGradient(0,PAD.top,0,PAD.top+cH);
+    g.addColorStop(0,'rgba(46,194,255,0.15)'); g.addColorStop(1,'rgba(46,194,255,0)');
+    ctx.fillStyle=g; ctx.fill();
   }
 
-  // Line
-  ctx.beginPath();
-  ctx.strokeStyle = '#2EC2FF';
-  ctx.lineWidth   = 2.5;
-  ctx.lineJoin    = 'round';
-  ctx.lineCap     = 'round';
-  let first = true;
-  pts.forEach(p => {
-    if (p.y === null) { first = true; return; }
-    if (first) { ctx.moveTo(p.x, p.y); first = false; }
-    else ctx.lineTo(p.x, p.y);
-  });
+  ctx.beginPath(); ctx.strokeStyle='#2EC2FF'; ctx.lineWidth=2.5;
+  ctx.lineJoin='round'; ctx.lineCap='round';
+  let first=true;
+  pts.forEach(p=>{if(p.y===null){first=true;return;} first?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y); first=false;});
   ctx.stroke();
 
-  // Average line
-  const avg = withData.length ? withData.reduce((s,p)=>s+p.pct,0) / withData.length : null;
-  if (avg !== null) {
-    const avgY = PAD.top + cH - (avg / yMax) * cH;
-    ctx.beginPath();
-    ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = 'rgba(242,53,87,0.5)';
-    ctx.lineWidth   = 1.5;
-    ctx.moveTo(PAD.left, avgY);
-    ctx.lineTo(PAD.left + cW, avgY);
-    ctx.stroke();
+  const avg=valid.length?valid.reduce((s,p)=>s+p.val,0)/valid.length:null;
+  if(avg!==null){
+    const ay=PAD.top+cH-(avg/yMax)*cH;
+    ctx.beginPath(); ctx.setLineDash([5,4]);
+    ctx.strokeStyle='rgba(242,53,87,0.45)'; ctx.lineWidth=1.5;
+    ctx.moveTo(PAD.left,ay); ctx.lineTo(PAD.left+cW,ay); ctx.stroke();
     ctx.setLineDash([]);
-    // avg label
-    ctx.fillStyle = 'rgba(242,53,87,0.8)';
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 10px Barlow, sans-serif';
-    ctx.fillText('Média ' + avg.toFixed(1) + '%', PAD.left + 4, avgY - 4);
-
-    document.getElementById('chart-media').textContent =
-      `Média: ${avg.toFixed(1)}%  |  Pico: ${Math.max(...withData.map(s=>s.pct)).toFixed(1)}%`;
+    ctx.fillStyle='rgba(242,53,87,0.75)'; ctx.textAlign='left';
+    ctx.font='bold 9px Barlow,sans-serif';
+    ctx.fillText('Média '+avg.toFixed(1)+'%',PAD.left+4,ay-4);
+    const lbl=isAjust?'Ajustado':'Total';
+    document.getElementById('chart-media').innerHTML=
+      `<span style="color:var(--muted2)">${lbl}:</span> Média <strong>${avg.toFixed(1)}%</strong>`+
+      ` · Pico <strong style="color:var(--red)">${Math.max(...valid.map(p=>p.val)).toFixed(1)}%</strong>`;
   }
 
-  // X labels + dots
-  ctx.textAlign  = 'center';
-  ctx.fillStyle  = '#6B8299';
-  ctx.font       = '10px Barlow, sans-serif';
-
-  pts.forEach((p, i) => {
-    // X label (every 2 to avoid crowding)
-    if (i % 2 === 0 || N <= 10) {
-      ctx.fillStyle = '#6B8299';
-      ctx.fillText(p.label, p.x, PAD.top + cH + 18);
-    }
-
-    if (p.y === null) return;
-
-    // Dot
-    const pct = p.pct;
-    const color = pct >= 10 ? '#F23557' : pct >= 5 ? '#F5B800' : '#00C853';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth   = 2;
-    ctx.stroke();
-
-    // Value label on dot
-    if (N <= 12) {
-      ctx.fillStyle  = '#0D1B2A';
-      ctx.font       = 'bold 10px Barlow, sans-serif';
-      ctx.textAlign  = 'center';
-      ctx.fillText(pct.toFixed(1) + '%', p.x, p.y - 10);
-      ctx.font = '10px Barlow, sans-serif';
+  ctx.font='10px Barlow,sans-serif'; ctx.textAlign='center';
+  pts.forEach((p,i)=>{
+    if(N<=8||i%2===0){ctx.fillStyle='#7A8FA6'; ctx.fillText(p.label,p.x,PAD.top+cH+16);}
+    if(p.y===null)return;
+    const c=p.val>=10?'#F23557':p.val>=5?'#F5B800':'#00C853';
+    ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2);
+    ctx.fillStyle=c; ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+    if(N<=8){
+      ctx.fillStyle='#0D1B2A'; ctx.font='bold 9px Barlow,sans-serif';
+      ctx.fillText(p.val.toFixed(1)+'%',p.x,p.y-9);
+      ctx.font='10px Barlow,sans-serif';
     }
   });
 
-  // Tooltip on hover
-  canvas.onmousemove = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx   = e.clientX - rect.left;
-    const tip  = document.getElementById('chart-tooltip');
-    let closest = null, minDist = 30;
-
-    pts.forEach(p => {
-      if (p.y === null) return;
-      const dist = Math.abs(p.x - mx);
-      if (dist < minDist) { minDist = dist; closest = p; }
-    });
-
-    if (closest) {
-      const color = closest.pct >= 10 ? '#F23557' : closest.pct >= 5 ? '#F5B800' : '#00C853';
-      tip.style.display = 'block';
-      tip.style.left = (closest.x + 12) + 'px';
-      tip.style.top  = (closest.y - 20) + 'px';
-      tip.innerHTML  = `<strong>${closest.semanaInicio} – ${closest.semanaFim}</strong><br>` +
-        `<span style="color:${color};font-size:13px;font-weight:700">${closest.pct.toFixed(1)}%</span> absenteísmo<br>` +
-        `<span style="color:#aaa">${closest.totalAusentes} ausências / ${closest.totalSlots} presenças esperadas</span>`;
-    } else {
-      tip.style.display = 'none';
-    }
+  canvas.onmousemove=e=>{
+    const rect=canvas.getBoundingClientRect(), mx=e.clientX-rect.left;
+    const tip=document.getElementById('chart-tooltip');
+    let cl=null,md=28;
+    pts.forEach(p=>{if(p.y===null)return; const d=Math.abs(p.x-mx); if(d<md){md=d;cl=p;}});
+    if(cl){
+      const c=cl.val>=10?'#F23557':cl.val>=5?'#F5B800':'#00C853';
+      tip.style.display='block';
+      tip.style.left=(cl.x>cW*0.7?cl.x-160:cl.x+12)+'px';
+      tip.style.top=(cl.y-24)+'px';
+      tip.innerHTML=`<strong>${cl.semanaInicio} – ${cl.semanaFim}</strong><br>`+
+        `<span style="color:${c};font-size:14px;font-weight:800">${cl.val.toFixed(1)}%</span> ${isAjust?'ajustado':'total'}<br>`+
+        `<span style="color:#aaa;font-size:10px">${cl.totalAusentes||0} aus. / ${cl.totalSlots||0} esperados</span>`;
+    } else { tip.style.display='none'; }
   };
-  canvas.onmouseleave = () => { document.getElementById('chart-tooltip').style.display = 'none'; };
+  canvas.onmouseleave=()=>{document.getElementById('chart-tooltip').style.display='none';};
 }
 
-// Redraw on resize
-window.addEventListener('resize', () => { if (chartData.length) drawChart(chartData); });
+window.addEventListener('resize',()=>{if(chartData.length)drawChart(chartData);});
 
 init();
 </script>

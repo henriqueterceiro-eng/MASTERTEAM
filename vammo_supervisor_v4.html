@@ -264,7 +264,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3tuiJQG0xz6vGffSbfIrjprhZ1BUwbvq4XnSsUYrzkx5KCyoCHCHL-gA-3CbtE8sB/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXPz7Fb5VIM7xQDLQlKAnyCRwTf0HPlZUYdI_BkIVyzujtjjf90yaP22shT1fI3tbn/exec';
 
 const OCUPACOES = ['Rampa','Qualidade','Diagnóstico','Mesa','Driver','Serviço Especial'];
 const SC = {'Presente':'s-pres','Atraso +15min':'s-atra','Faltou':'s-falt','Afastado':'s-afas','Férias':'s-fer','Folga':'s-folg'};
@@ -286,7 +286,13 @@ function init() {
     call('supervisores', {}, d2 => {
       const sel = document.getElementById('sel-sup');
       sel.innerHTML = '<option value="">— selecione —</option>';
-      (d2.supervisores||[]).forEach(s => { const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o); });
+      (d2.supervisores||[]).forEach(s => {
+        const o = document.createElement('option');
+        // suporte a formato novo {nome,turno} e antigo string
+        const nome = typeof s === 'object' ? s.nome : s;
+        o.value = nome; o.textContent = nome;
+        sel.appendChild(o);
+      });
       const saved = localStorage.getItem('vammo_sup_v4');
       if (saved) { sel.value = saved; onSupChange(); }
     });

@@ -152,7 +152,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 .cfg-tab-s{font-size:10px;color:var(--muted);}
 .cfg-content{display:none;flex-direction:column;overflow:hidden;}
 .cfg-content.active{display:flex;}
-.cfg-content.cfg-sups.active{display:grid;grid-template-columns:260px 1fr;}
+.cfg-content.cfg-sups.active{display:flex;flex-direction:column;}
 
 /* TEAM COLS */
 .team-cols{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;}
@@ -413,22 +413,18 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
       </div>
     </div>
 
-    <!-- SUPERVISORES + TIMES -->
+    <!-- SUPERVISORES -->
     <div class="cfg-content cfg-sups" id="cfg-sups">
-      <div style="background:var(--white);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden;">
-        <div class="panel-hd">
-          <div class="panel-title">Supervisores</div>
-          <button class="btn btn-blue btn-sm" onclick="openModal('modal-sup')">+ Novo</button>
-        </div>
-        <div style="flex:1;overflow-y:auto;" id="sup-list-cfg"></div>
+      <div class="panel-hd" style="flex-shrink:0;">
+        <div class="panel-title">Supervisores e Turnos</div>
+        <button class="btn btn-blue btn-sm" onclick="abrirNovoSup()">+ Novo Supervisor</button>
       </div>
-      <div style="display:flex;flex-direction:column;overflow:hidden;">
-        <div class="panel-hd" id="team-hd-cfg">
-          <div class="panel-title" style="color:var(--muted2)">← Selecione um supervisor</div>
-        </div>
-        <div id="team-area" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
-          <div class="empty-st">Clique em um supervisor para gerenciar o time</div>
-        </div>
+      <!-- Info -->
+      <div style="padding:10px 20px;background:var(--blue-d);border-bottom:1px solid var(--blue-b);font-size:11px;color:var(--blue);flex-shrink:0;">
+        💡 Cada supervisor é responsável por um turno. Todos os mecânicos daquele turno formam o time automaticamente.
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px 20px;" id="sup-list-cfg">
+        <div class="spinner" style="margin:40px auto;"></div>
       </div>
     </div>
 
@@ -504,12 +500,25 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 </div>
 
 <div class="modal-bg" id="modal-sup">
-  <div class="modal">
-    <h3>NOVO SUPERVISOR</h3>
-    <div class="form-r"><div class="form-l">Nome</div><input type="text" id="sup-nome" placeholder="Ex: Marcio"></div>
+  <div class="modal" style="max-width:420px;">
+    <h3 id="modal-sup-title">NOVO SUPERVISOR</h3>
+    <div class="form-r">
+      <div class="form-l">Nome do Supervisor</div>
+      <input type="text" id="sup-nome" placeholder="Ex: Luciano">
+    </div>
+    <div class="form-r">
+      <div class="form-l">Turno / Time</div>
+      <select id="sup-turno" style="width:100%;">
+        <option value="">— selecione o turno —</option>
+      </select>
+    </div>
+    <div style="padding:8px 12px;background:var(--blue-d);border-radius:8px;font-size:11px;color:var(--blue);margin-top:4px;">
+      💡 O time do supervisor será formado automaticamente por todos os mecânicos deste turno.
+    </div>
+    <input type="hidden" id="sup-orig">
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-sup')">Cancelar</button>
-      <button class="btn btn-blue" onclick="salvarSup()">💾 Salvar</button>
+      <button class="btn btn-blue" id="btn-salvar-sup" onclick="salvarSup()">💾 Salvar</button>
     </div>
   </div>
 </div>
@@ -556,7 +565,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3tuiJQG0xz6vGffSbfIrjprhZ1BUwbvq4XnSsUYrzkx5KCyoCHCHL-gA-3CbtE8sB/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXPz7Fb5VIM7xQDLQlKAnyCRwTf0HPlZUYdI_BkIVyzujtjjf90yaP22shT1fI3tbn/exec';
 
 let sups=[], allCols=[], teamData=[], selSup=null;
 let turnoMap={}, turnosData=[];
@@ -569,11 +578,15 @@ function init() {
   document.getElementById('dash-data').value = fmtIn(new Date());
 
   call('supervisores',{},d=>{
-    sups=d.supervisores||[];
+    sups = d.supervisores || []; // [{nome, turno}]
     ['dash-sup','ext-sup','bon-sup'].forEach(id=>{
-      const sel=document.getElementById(id);
-      sel.innerHTML='<option value="Todos">Todos</option>';
-      sups.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);});
+      const sel = document.getElementById(id);
+      sel.innerHTML = '<option value="Todos">Todos</option>';
+      sups.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.nome; o.textContent = s.nome;
+        sel.appendChild(o);
+      });
     });
     loadDash();
   });
@@ -610,7 +623,7 @@ function cfgTab(tab, btn){
   // Ativa o correto com o display certo
   const el = document.getElementById('cfg-' + tab);
   el.classList.add('active');
-  el.style.display = tab === 'sups' ? 'grid' : 'flex';
+  el.style.display = 'flex';
   // Carrega dados
   if (tab === 'cols')    loadCols();
   if (tab === 'sups')    loadCfgSups();
@@ -827,105 +840,130 @@ function remTurno(idEnc,baseEnc){
   call('removeTurno',{turnoId:dec(idEnc)},d=>{if(d.ok){loadTurnos();toast('✅ Turno removido');}});
 }
 
-// ════ CONFIG — SUPERVISORES + TIMES ════
-function loadCfgSups(){
-  call('supervisores',{},d=>{
-    sups=d.supervisores||[];
-    renderSupCfgList();
+// ════ CONFIG — SUPERVISORES ════
+function loadCfgSups() {
+  // Carrega turnos e supervisores em paralelo
+  const el = document.getElementById('sup-list-cfg');
+  if (el) el.innerHTML = '<div class="spinner" style="margin:40px auto;"></div>';
+
+  let turnosOk = false, supsOk = false;
+
+  call('turnos', {}, d => {
+    turnosData = d.turnos || [];
+    d.turnos.forEach(t => { turnoMap[t.id] = t.nome; });
+    turnosOk = true;
+    if (supsOk) renderSupCfgList();
+  });
+
+  call('supervisores', {}, d => {
+    sups = d.supervisores || []; // [{nome, turno}]
+    supsOk = true;
+    if (turnosOk) renderSupCfgList();
   });
 }
-function renderSupCfgList(){
-  const el=document.getElementById('sup-list-cfg');
-  if(!sups.length){el.innerHTML='<div class="empty-st">Nenhum supervisor</div>';return;}
-  // Monta lista sem fazer chamadas concorrentes — contagem aparece ao selecionar
-  el.innerHTML=sups.map(s=>`
-    <div class="team-item ${selSup===s?'in':''}" onclick="selectSup('${enc(s)}')"
-      style="${selSup===s?'background:var(--blue-d);border-left:3px solid var(--blue);':''}">
-      <div>
-        <div class="team-nm">${s}</div>
-        <div class="team-s" id="sc-${enc(s)}">${selSup===s&&teamData.length?teamData.length+' mecânicos':'clique para ver o time'}</div>
-      </div>
-      <button class="btn btn-ghost btn-sm btn-icon" onclick="event.stopPropagation();remSup('${enc(s)}')" style="color:var(--muted2);">🗑️</button>
-    </div>`).join('');
+
+function renderSupCfgList() {
+  const el = document.getElementById('sup-list-cfg');
+  if (!el) return;
+  if (!sups.length) {
+    el.innerHTML = '<div class="empty-st">Nenhum supervisor cadastrado</div>';
+    return;
+  }
+
+  el.innerHTML = sups.map(s => {
+    const tNome = turnoMap[s.turno] || s.turno || '— sem turno —';
+    // Conta mecânicos do turno
+    const count = allCols.filter(c => c.turno === s.turno && c.status === 'Ativo').length;
+    return '<div style="background:var(--white);border:1px solid var(--b1);border-radius:12px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);">' +
+      '<div>' +
+        '<div style="font-family:Barlow Condensed,sans-serif;font-size:18px;font-weight:800;">' + s.nome + '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">' +
+          '<span class="badge b-blue" style="font-size:11px;">🏷️ ' + tNome + '</span>' +
+          (count ? '<span style="font-size:11px;color:var(--muted);">👥 ' + count + ' mecânicos</span>' : '<span style="font-size:11px;color:var(--orange);">⚠️ sem turno definido</span>') +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button class="btn btn-ghost btn-sm" onclick="editSup(' + JSON.stringify(s.nome) + ',' + JSON.stringify(s.turno||'') + ')">✏️ Editar</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="remSup(' + JSON.stringify(s.nome) + ')" style="color:var(--red);">🗑️</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
-function selectSup(supEnc){
-  selSup=dec(supEnc);
-  renderSupCfgList();
-  document.getElementById('team-hd-cfg').querySelector('.panel-title').textContent='👥 Time de '+selSup;
-  loadTeamCfg(selSup);
-}
-function loadTeamCfg(sup){
-  document.getElementById('team-area').innerHTML='<div class="empty-st"><div class="spinner"></div></div>';
-  let al=false,tl=false;
-  call('colaboradores',{},d=>{
-    allCols=d.colaboradores||[];al=true;
-    if(tl){renderTeamCfg();updateSupCount();}
+
+function populateSupTurnoModal() {
+  const sel = document.getElementById('sup-turno');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— selecione o turno —</option>';
+  turnosData.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = t.nome + (t.base && t.base !== 'Principal' ? ' — ' + t.base : '');
+    sel.appendChild(o);
   });
-  call('time',{supervisor:sup},d=>{
-    teamData=d.time||[];tl=true;
-    if(al){renderTeamCfg();updateSupCount();}
+  if (cur) sel.value = cur;
+}
+
+function abrirNovoSup() {
+  populateSupTurnoModal();
+  document.getElementById('modal-sup-title').textContent = 'NOVO SUPERVISOR';
+  document.getElementById('sup-nome').value  = '';
+  document.getElementById('sup-turno').value = '';
+  document.getElementById('sup-orig').value  = '';
+  openModal('modal-sup');
+  setTimeout(() => document.getElementById('sup-nome').focus(), 80);
+}
+
+function editSup(nome, turno) {
+  populateSupTurnoModal();
+  document.getElementById('modal-sup-title').textContent = 'EDITAR SUPERVISOR';
+  document.getElementById('sup-nome').value  = nome;
+  document.getElementById('sup-orig').value  = nome;
+  setTimeout(() => { document.getElementById('sup-turno').value = turno; }, 50);
+  openModal('modal-sup');
+}
+
+function salvarSup() {
+  const nome  = document.getElementById('sup-nome').value.trim();
+  const turno = document.getElementById('sup-turno').value;
+  const orig  = document.getElementById('sup-orig').value;
+  if (!nome) { toast('⚠️ Digite o nome do supervisor'); return; }
+  if (!turno){ toast('⚠️ Selecione o turno do supervisor'); return; }
+
+  const btn = document.getElementById('btn-salvar-sup');
+  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+
+  const isEdit = !!orig;
+  const params = isEdit ? { nome, turno, nomeOriginal: orig } : { nome, turno };
+
+  call(isEdit ? 'editSup' : 'addSup', params, d => {
+    btn.disabled = false; btn.textContent = '💾 Salvar';
+    if (d.error) { toast('❌ ' + d.error); return; }
+    closeModal('modal-sup');
+    // Atualiza dropdowns de supervisor nas outras abas
+    if (!isEdit) {
+      ['dash-sup','ext-sup','bon-sup'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { const o = document.createElement('option'); o.value=nome; o.textContent=nome; el.appendChild(o); }
+      });
+    }
+    loadCfgSups();
+    toast(isEdit ? '✅ Supervisor atualizado!' : '✅ Supervisor ' + nome + ' criado!');
   });
 }
-function updateSupCount(){
-  const el=document.getElementById('sc-'+enc(selSup));
-  if(el) el.textContent=teamData.length+' mecânicos';
-}
-function renderTeamCfg(){
-  const tn=new Set(teamData.map(e=>e.nome));
-  const av=allCols.filter(e=>!tn.has(e.nome)&&e.status!=='Inativo');
-  document.getElementById('team-area').innerHTML=`
-    <div class="team-cols">
-      <div class="team-col">
-        <div class="team-col-hd"><span class="team-col-title">🌐 Disponíveis</span><span class="team-col-cnt" id="ca">${av.length}</span></div>
-        <div class="team-search"><input type="text" placeholder="Buscar..." oninput="filterTeam('a',this.value)"></div>
-        <div class="team-list" id="la">
-          ${av.map(e=>`<div class="team-item" onclick="addToTeam('${enc(e.nome)}')">
-            <div><div class="team-nm">${e.nome}</div><div class="team-s">${turnoNome(e.turno)||e.turno} · ${e.setor}</div></div>
-            <span class="team-act">＋</span></div>`).join('')||'<div class="empty-st" style="padding:24px">Todos no time</div>'}
-        </div>
-      </div>
-      <div class="team-col">
-        <div class="team-col-hd"><span class="team-col-title">👥 Time de ${selSup}</span><span class="team-col-cnt" id="ct">${teamData.length}</span></div>
-        <div class="team-search"><input type="text" placeholder="Buscar..." oninput="filterTeam('t',this.value)"></div>
-        <div class="team-list" id="lt">
-          ${teamData.map(e=>`<div class="team-item in" onclick="removeFromTeam('${enc(e.nome)}')">
-            <div><div class="team-nm">${e.nome}</div><div class="team-s">${turnoNome(e.turno)||e.turno} · ${e.setor}</div></div>
-            <span class="team-act" style="color:var(--muted2)">✕</span></div>`).join('')||'<div class="empty-st" style="padding:24px">Time vazio</div>'}
-        </div>
-      </div>
-    </div>`;
-}
-function filterTeam(l,q){
-  const id=l==='a'?'la':'lt';
-  document.getElementById(id).querySelectorAll('.team-item').forEach(el=>{
-    el.style.display=!q||el.querySelector('.team-nm').textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
+
+function remSup(nome) {
+  if (!confirm('Remover supervisor ' + nome + '? Os registros de presença não serão afetados.')) return;
+  call('removeSup', { nome }, d => {
+    if (d.ok) {
+      loadCfgSups();
+      toast('✅ ' + nome + ' removido');
+    } else {
+      toast('❌ ' + (d.error || 'Erro ao remover'));
+    }
   });
 }
-function addToTeam(ne){
-  const nome=dec(ne);
-  call('addAoTime',{supervisor:selSup,nome},d=>{
-    if(d.ok||d.msg){const emp=allCols.find(e=>e.nome===nome);if(emp&&!teamData.find(e=>e.nome===nome))teamData.push(emp);renderTeamCfg();renderSupCfgList();toast('✅ '+nome+' adicionado');}
-  });
-}
-function removeFromTeam(ne){
-  const nome=dec(ne);
-  call('removeDoTime',{supervisor:selSup,nome},d=>{if(d.ok){teamData=teamData.filter(e=>e.nome!==nome);renderTeamCfg();renderSupCfgList();toast('✅ '+nome+' removido');}});
-}
-function salvarSup(){
-  const nome=document.getElementById('sup-nome').value.trim();
-  if(!nome){toast('⚠️ Digite o nome');return;}
-  call('addSup',{nome},d=>{
-    if(d.error){toast('❌ '+d.error);return;}
-    sups.push(nome);
-    ['dash-sup','ext-sup','bon-sup'].forEach(id=>{const o=document.createElement('option');o.value=nome;o.textContent=nome;document.getElementById(id).appendChild(o);});
-    closeModal('modal-sup');renderSupCfgList();toast('✅ Supervisor criado!');
-  });
-}
-function remSup(ne){
-  const nome=dec(ne);
-  if(!confirm('Remover supervisor '+nome+'?'))return;
-  call('removeSup',{nome},d=>{if(d.ok){sups=sups.filter(s=>s!==nome);if(selSup===nome){selSup=null;document.getElementById('team-area').innerHTML='<div class="empty-st">Selecione um supervisor</div>';}renderSupCfgList();toast('✅ Removido');}});
-}
+
 
 // ════ CONFIG — COLABORADORES ════
 // ════ CONFIG — COLABORADORES ════

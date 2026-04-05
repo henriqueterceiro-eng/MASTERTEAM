@@ -413,18 +413,44 @@ let fbHistorico = null;
 let fbDias = 7;
 
 function initFeedback() {
-  // Popula dropdown de colaboradores com o time do supervisor
   const sel = document.getElementById('fb-colaborador');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">— selecione —</option>';
-  team.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(emp => {
-    const o = document.createElement('option');
-    o.value = emp.nome; o.textContent = emp.nome;
-    sel.appendChild(o);
+
+  const populate = () => {
+    sel.innerHTML = '<option value="">— selecione —</option>';
+    // Copia e ordena sem modificar o original
+    const sorted = [...team].sort((a,b) => a.nome.localeCompare(b.nome));
+    sorted.forEach(emp => {
+      const o = document.createElement('option');
+      o.value = emp.nome; o.textContent = emp.nome;
+      sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+    fbPreset(7, document.querySelector('#page-feedback .preset.active'));
+  };
+
+  // Se team já carregado, usa direto
+  if (team.length > 0) {
+    populate();
+    return;
+  }
+
+  // Se não, carrega agora
+  const sup = document.getElementById('sel-sup').value;
+  if (!sup) {
+    sel.innerHTML = '<option value="">— selecione o supervisor primeiro —</option>';
+    return;
+  }
+
+  sel.innerHTML = '<option value="">⏳ Carregando...</option>';
+  call('time', { supervisor: sup }, d => {
+    team = d.time || [];
+    if (!team.length) {
+      sel.innerHTML = '<option value="">Nenhum colaborador no time</option>';
+      return;
+    }
+    populate();
   });
-  if (cur) sel.value = cur;
-  // Preset padrão: última semana
-  fbPreset(7, document.querySelector('#page-feedback .preset.active'));
 }
 
 function fbPreset(dias, btn) {

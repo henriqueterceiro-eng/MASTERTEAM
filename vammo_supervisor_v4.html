@@ -58,8 +58,11 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px
 .sup-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
 
 /* PAGES */
-.sup-page{display:none;flex:1;overflow:hidden;}
+.sup-page{display:none;flex:1;overflow:hidden;flex-direction:column;}
 .sup-page.active{display:flex;}
+
+/* BODY (chamada layout) */
+.body{display:flex;flex:1;overflow:hidden;}
 
 /* FEEDBACK PAGE */
 .fb-layout{display:grid;grid-template-columns:280px 1fr;flex:1;overflow:hidden;}
@@ -401,10 +404,15 @@ let periodoQueue = [], periodoIdx = 0, periodoCallback = null;
 function goTab(tab, btn) {
   document.querySelectorAll('.sup-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelectorAll('.sup-page').forEach(p => { p.classList.remove('active'); p.style.display='none'; });
+  document.querySelectorAll('.sup-page').forEach(p => {
+    p.classList.remove('active');
+    p.style.display = 'none';
+  });
   const pg = document.getElementById('page-' + tab);
   pg.classList.add('active');
   pg.style.display = 'flex';
+  pg.style.flexDirection = 'column';
+  pg.style.flex = '1';
   if (tab === 'feedback') initFeedback();
 }
 
@@ -662,7 +670,6 @@ function loadTeam() {
   call('time',{supervisor:sup},d=>{
     team = d.time||[];
 
-    // Mostra aviso se supervisor sem turno
     if (d.aviso) {
       document.getElementById('tbody').innerHTML=
         '<tr class="empty-row"><td colspan="7" style="color:var(--orange);">⚠️ ' + d.aviso + '</td></tr>';
@@ -670,12 +677,16 @@ function loadTeam() {
     }
 
     if (!team.length) {
+      const turno = d.turnoSup || '';
       document.getElementById('tbody').innerHTML=
-        '<tr class="empty-row"><td colspan="7">Nenhum mecânico no turno <strong>' + (d.turnoSup||'?') + '</strong>.<br>Verifique o cadastro dos colaboradores.</td></tr>';
+        '<tr class="empty-row"><td colspan="7">' +
+        (turno
+          ? 'Nenhum mecânico com turno <strong>' + turno + '</strong> encontrado.<br><small style="color:var(--muted)">Verifique o cadastro dos colaboradores no painel do gerente.</small>'
+          : '⚠️ Supervisor sem turno configurado.<br><small style="color:var(--muted)">Peça ao gerente configurar o turno em ⚙️ Config → Supervisores.</small>') +
+        '</td></tr>';
       updateStats(); return;
     }
 
-    // Badge mostra nome do turno
     const tNome = turnoMap[d.turnoSup] || d.turnoSup || '';
     const badge = document.getElementById('turno-badge');
     if (badge) { badge.textContent = tNome; badge.style.display = tNome ? '' : 'none'; }

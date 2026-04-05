@@ -354,6 +354,21 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
         <div class="fb-stat"><div class="fb-stat-n" id="fbs-tot" style="color:var(--blue)">0</div><div class="fb-stat-l">Total dias</div></div>
       </div>
 
+      <!-- GRÁFICO COMPARATIVO -->
+      <div id="fb-chart-area" style="display:none;background:var(--white);border-bottom:1px solid var(--b1);padding:12px 16px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;">Presença semanal vs grupo</div>
+          <div style="display:flex;gap:14px;font-size:11px;">
+            <span><span style="display:inline-block;width:12px;height:3px;background:var(--blue);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>Colaborador</span>
+            <span><span style="display:inline-block;width:12px;height:3px;background:var(--orange);border-radius:2px;margin-right:4px;vertical-align:middle;border-style:dashed;"></span><span id="fb-grupo-label">Média Grupo</span></span>
+          </div>
+        </div>
+        <div style="position:relative;height:130px;">
+          <canvas id="fb-chart" style="width:100%;height:100%;display:block;"></canvas>
+          <div id="fb-chart-tip" style="display:none;position:absolute;background:var(--text);color:#fff;padding:6px 11px;border-radius:7px;font-size:11px;pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--shadow-md);"></div>
+        </div>
+      </div>
+
       <!-- Timeline -->
       <div class="timeline-wrap" id="fb-timeline">
         <div style="text-align:center;padding:60px;color:var(--muted);font-size:13px;">
@@ -494,16 +509,153 @@ function carregarHistorico() {
     '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
   document.getElementById('fb-col-header').style.display = 'none';
   document.getElementById('fb-stats').style.display = 'none';
+  document.getElementById('fb-chart-area').style.display = 'none';
+  document.getElementById('fb-box').style.display = 'none';
 
-  call('historico', { nome, inicio: toDisp(ini), fim: toDisp(fim) }, d => {
+  const ds_ini = toDisp(ini), ds_fim = toDisp(fim);
+
+  // Carrega histórico e comparativo em paralelo
+  let histOk = false, compOk = false;
+  let histData = null, compData = null;
+
+  call('historico', { nome, inicio: ds_ini, fim: ds_fim }, d => {
     if (d.error) {
       document.getElementById('fb-timeline').innerHTML =
         '<div style="text-align:center;padding:40px;color:var(--red)">❌ ' + d.error + '</div>';
       return;
     }
-    fbHistorico = d;
+    fbHistorico = d; histData = d; histOk = true;
     renderHistorico(d);
+    if (compOk) drawComparativo(compData);
   });
+
+  call('comparativo', { nome, inicio: ds_ini, fim: ds_fim }, d => {
+    compData = d; compOk = true;
+    if (histOk) drawComparativo(d);
+  });
+}
+
+function drawComparativo(d) {
+  const area = document.getElementById('fb-chart-area');
+  if (!d || !d.semanas || !d.semanas.length) { area.style.display='none'; return; }
+
+  area.style.display = 'block';
+
+  // Label do grupo
+  const gLabel = d.nivelColaborador
+    ? 'Média ' + d.nivelColaborador + ' (' + d.grupoSize + ' mecânicos)'
+    : 'Média do grupo';
+  document.getElementById('fb-grupo-label').textContent = gLabel;
+
+  const canvas = document.getElementById('fb-chart');
+  const wrap   = canvas.parentElement;
+  const dpr    = window.devicePixelRatio || 1;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+
+  const PAD = { top:14, right:14, bottom:32, left:38 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top  - PAD.bottom;
+  const N  = d.semanas.length;
+
+  // Y axis 0-100
+  const yMax = 100;
+  ctx.font = '9px Barlow, sans-serif';
+  [0,25,50,75,100].forEach(v => {
+    const y = PAD.top + cH - (v/yMax)*cH;
+    ctx.beginPath();
+    ctx.strokeStyle = v===0 ? '#C8D6E8' : '#EEF2F7';
+    ctx.lineWidth = 1;
+    ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left+cW, y); ctx.stroke();
+    ctx.fillStyle='#7A8FA6'; ctx.textAlign='right';
+    ctx.fillText(v+'%', PAD.left-5, y+3);
+  });
+
+  const xStep = N > 1 ? cW/(N-1) : cW;
+  const pts = d.semanas.map((s,i) => ({
+    ...s,
+    x: PAD.left + i*xStep,
+    yCol:   s.pctCol   !== null ? PAD.top + cH - (s.pctCol/yMax)*cH   : null,
+    yGrupo: s.pctGrupo !== null ? PAD.top + cH - (s.pctGrupo/yMax)*cH : null
+  }));
+
+  const drawLine = (key, color, dashed) => {
+    const valid = pts.filter(p => p[key] !== null);
+    if (valid.length < 1) return;
+    if (dashed) ctx.setLineDash([5,4]); else ctx.setLineDash([]);
+    ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.5;
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    let first=true;
+    pts.forEach(p => {
+      if (p[key]===null){first=true;return;}
+      first ? ctx.moveTo(p.x,p[key]) : ctx.lineTo(p.x,p[key]);
+      first=false;
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+
+  // Área fill colaborador
+  const validCol = pts.filter(p=>p.yCol!==null);
+  if (validCol.length >= 2) {
+    ctx.beginPath();
+    ctx.moveTo(validCol[0].x, PAD.top+cH);
+    validCol.forEach(p=>ctx.lineTo(p.x,p.yCol));
+    ctx.lineTo(validCol[validCol.length-1].x, PAD.top+cH);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0,PAD.top,0,PAD.top+cH);
+    g.addColorStop(0,'rgba(46,194,255,0.15)'); g.addColorStop(1,'rgba(46,194,255,0)');
+    ctx.fillStyle=g; ctx.fill();
+  }
+
+  drawLine('yGrupo','#FF8C00', true);  // média grupo — laranja tracejado
+  drawLine('yCol',  '#2EC2FF', false); // colaborador — azul sólido
+
+  // Dots + X labels
+  ctx.font='9px Barlow,sans-serif'; ctx.textAlign='center';
+  pts.forEach(p => {
+    ctx.fillStyle='#7A8FA6';
+    ctx.fillText(p.label, p.x, PAD.top+cH+18);
+
+    if (p.yCol !== null) {
+      const c = p.pctCol >= 90?'#00C853':p.pctCol>=75?'#F5B800':'#F23557';
+      ctx.beginPath(); ctx.arc(p.x,p.yCol,4,0,Math.PI*2);
+      ctx.fillStyle=c; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+      if (N<=8){
+        ctx.fillStyle='#0D1B2A'; ctx.font='bold 9px Barlow,sans-serif';
+        ctx.fillText(p.pctCol+'%', p.x, p.yCol-8);
+        ctx.font='9px Barlow,sans-serif';
+      }
+    }
+    if (p.yGrupo !== null) {
+      ctx.beginPath(); ctx.arc(p.x,p.yGrupo,3,0,Math.PI*2);
+      ctx.fillStyle='#FF8C00'; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+    }
+  });
+
+  // Tooltip
+  canvas.onmousemove = e => {
+    const rect=canvas.getBoundingClientRect(), mx=e.clientX-rect.left;
+    const tip=document.getElementById('fb-chart-tip');
+    let cl=null, md=30;
+    pts.forEach(p=>{ const dist=Math.abs(p.x-mx); if(dist<md){md=dist;cl=p;} });
+    if (cl) {
+      tip.style.display='block';
+      tip.style.left=(cl.x>cW*0.7?cl.x-160:cl.x+12)+'px';
+      tip.style.top='10px';
+      const corCol=cl.pctCol>=90?'#00C853':cl.pctCol>=75?'#F5B800':'#F23557';
+      tip.innerHTML='<strong>Semana ' + cl.label + '</strong><br>' +
+        (cl.pctCol!==null ? '<span style="color:'+corCol+'">● Colaborador: <strong>'+cl.pctCol+'%</strong></span><br>' : '') +
+        (cl.pctGrupo!==null ? '<span style="color:#FF8C00">● '+gLabel+': <strong>'+cl.pctGrupo+'%</strong></span>' : '');
+    } else { tip.style.display='none'; }
+  };
+  canvas.onmouseleave=()=>{ document.getElementById('fb-chart-tip').style.display='none'; };
 }
 
 function renderHistorico(d) {

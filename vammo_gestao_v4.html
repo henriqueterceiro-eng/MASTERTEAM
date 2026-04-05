@@ -296,13 +296,13 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
         <div class="panel-title">Ocupações</div>
         <div id="k-ocup" style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--blue);">0</div>
       </div>
-      <div class="ocup-list" id="ocup-panel" style="border-bottom:1px solid var(--b1);max-height:200px;overflow-y:auto;"></div>
-      <!-- RAMPA POR NÍVEL -->
+      <div class="ocup-list" id="ocup-panel" style="border-bottom:1px solid var(--b1);max-height:180px;overflow-y:auto;"></div>
+      <!-- NÍVEIS -->
       <div class="panel-hd" style="flex-shrink:0;">
-        <div class="panel-title">🔧 Rampa por Nível</div>
+        <div class="panel-title">Presentes por Nível</div>
       </div>
-      <div id="rampa-nivel-panel" style="padding:10px 14px;border-bottom:1px solid var(--b1);flex-shrink:0;">
-        <div style="font-size:11px;color:var(--muted2);text-align:center;">Aguardando dados...</div>
+      <div style="padding:10px 16px;border-bottom:1px solid var(--b1);flex-shrink:0;" id="nivel-panel">
+        <div style="font-size:11px;color:var(--muted2)">—</div>
       </div>
       <div class="panel-hd" style="flex-shrink:0;"><div class="panel-title">Por Supervisor</div></div>
       <div style="flex:1;overflow-y:auto;" id="sup-bd"></div>
@@ -456,6 +456,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
           </select>
           <button class="btn btn-blue btn-sm" onclick="loadCols()">🔄 Carregar</button>
           <button class="btn btn-blue btn-sm" onclick="abrirNovoCol()">+ Novo</button>
+          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-niveis')" style="color:var(--purple);border-color:var(--purple);">📥 Importar Níveis</button>
         </div>
       </div>
       <!-- DIAGNÓSTICO -->
@@ -538,7 +539,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
       <div class="form-l">Nome completo</div>
       <input type="text" id="col-nome" placeholder="Ex: João da Silva" autocomplete="off">
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="form-r">
         <div class="form-l">Turno</div>
         <select id="col-turno" style="width:100%;">
@@ -556,15 +557,15 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
           <option>Treinamento</option>
         </select>
       </div>
-      <div class="form-r">
-        <div class="form-l">Nível</div>
-        <select id="col-nivel" style="width:100%;">
-          <option value="">—</option>
-          <option value="Mec1">Mec1</option>
-          <option value="Mec2">Mec2</option>
-          <option value="Mec3">Mec3</option>
-        </select>
-      </div>
+    </div>
+    <div class="form-r">
+      <div class="form-l">Nível</div>
+      <select id="col-nivel" style="width:100%;">
+        <option value="">— sem nível —</option>
+        <option value="Mec 1">Mec 1</option>
+        <option value="Mec 2">Mec 2</option>
+        <option value="Mec 3">Mec 3</option>
+      </select>
     </div>
     <!-- aviso migração -->
     <div id="col-migracao-aviso" style="display:none;margin-top:8px;padding:8px 12px;background:var(--yellow-d);border:1px solid rgba(245,184,0,.3);border-radius:8px;font-size:11px;color:var(--orange);">
@@ -574,7 +575,26 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
     <input type="hidden" id="col-turno-orig">
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-col')">Cancelar</button>
-      <button class="btn btn-blue" id="btn-salvar-col" onclick="salvarCol()">💾 Salvar</button>
+      <button class="btn btn-blue" id="btn-salvar-col" onclick="sarCol()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-import-niveis">
+  <div class="modal" style="max-width:520px;">
+    <h3>📥 IMPORTAR NÍVEIS</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+      Cole a lista abaixo no formato <strong>Nome [Tab] Nível</strong>.<br>
+      Só atualiza quem já está cadastrado. Não cria novos.
+    </p>
+    <div class="form-r">
+      <div class="form-l">Lista (Nome + Tab + Nível, um por linha)</div>
+      <textarea id="import-txt" rows="12" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--b2);border-radius:8px;padding:10px;font-size:12px;font-family:monospace;resize:vertical;outline:none;" placeholder="Luciano	Mec 3&#10;Ricardo Barbosa	Mec 1&#10;João Paulo	Mec 2"></textarea>
+    </div>
+    <div id="import-result" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;font-size:12px;"></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-import-niveis')">Fechar</button>
+      <button class="btn btn-blue" id="btn-importar" onclick="executarImport()">📥 Importar</button>
     </div>
   </div>
 </div>
@@ -582,7 +602,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzY7Xk9KapGbm0NjdegWE5etlTZuu3lCXNx4QpyvVt7yJmos8zBa0OPdzFoFPiGxG0/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzza6oBOjMrSxoAJder5bHWVT-8eEVPyW0xdd5-Pbqnce3Dj2dLMBXxYtJJR8YIcTE/exec';
 
 let sups=[], allCols=[], teamData=[], selSup=null;
 let turnoMap={}, turnosData=[];
@@ -673,8 +693,8 @@ function loadDash(){
     document.getElementById('k-sem').textContent=s.semRegistro;
     renderDashTable(d.detalhes);
     renderOcupPanel(d.ocupacoes,s.presentes+s.atrasos);
+    renderNivelPanel(d.porNivel);
     renderSupBd(d.porSupervisor);
-    renderRampaNivel(d.rampaNivel || {});
     // gráfico só carrega sob demanda
   });
 }
@@ -698,37 +718,6 @@ function renderDashTable(det){
     </tr>`).join('')
     :'<tr><td colspan="5" class="empty-st">Nenhum resultado</td></tr>';
 }
-function renderRampaNivel(rampaNivel) {
-  const el = document.getElementById('rampa-nivel-panel');
-  if (!el) return;
-  const turnos = Object.keys(rampaNivel || {});
-  if (!turnos.length) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--muted2);text-align:center;">Nenhum em rampa hoje</div>';
-    return;
-  }
-  el.innerHTML = turnos.map(tNome => {
-    const d = rampaNivel[tNome];
-    const total = (d.Mec1||0) + (d.Mec2||0) + (d.Mec3||0);
-    return `<div style="margin-bottom:10px;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">${tNome} <span style="color:var(--blue)">(${total})</span></div>
-      <div style="display:flex;gap:6px;">
-        <div style="flex:1;background:var(--green-d);border:1px solid rgba(0,200,83,.25);border-radius:8px;padding:6px 10px;text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);line-height:1">${d.Mec1||0}</div>
-          <div style="font-size:9px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-top:2px;">MEC1</div>
-        </div>
-        <div style="flex:1;background:var(--yellow-d);border:1px solid rgba(245,184,0,.25);border-radius:8px;padding:6px 10px;text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#A07800;line-height:1">${d.Mec2||0}</div>
-          <div style="font-size:9px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-top:2px;">MEC2</div>
-        </div>
-        <div style="flex:1;background:var(--blue-d);border:1px solid var(--blue-b);border-radius:8px;padding:6px 10px;text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--blue);line-height:1">${d.Mec3||0}</div>
-          <div style="font-size:9px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-top:2px;">MEC3</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
 function filterDash(){if(dashData)renderDashTable(dashData.detalhes);}
 
 function renderOcupPanel(oc,tot){
@@ -738,6 +727,28 @@ function renderOcupPanel(oc,tot){
   document.getElementById('ocup-panel').innerHTML=entries.length
     ?entries.map(([o,n])=>`<div class="ocup-item"><span class="ocup-nm">${o}</span><div class="ocup-bg"><div class="ocup-bar" style="width:${Math.round(n/t*100)}%"></div></div><span class="ocup-cnt">${n}</span></div>`).join('')
     :'<div class="empty-st" style="padding:20px">Nenhuma</div>';
+}
+
+function renderNivelPanel(porNivel) {
+  const el = document.getElementById('nivel-panel');
+  if (!el) return;
+  const entries = Object.entries(porNivel||{}).sort((a,b) => a[0].localeCompare(b[0]));
+  if (!entries.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--muted2)">Nenhum nível cadastrado</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([nivel, d]) => {
+    const pres = d.presentes + d.atrasos;
+    const pct  = d.total > 0 ? Math.round(pres/d.total*100) : 0;
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+      '<span style="font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;min-width:44px;color:var(--purple)">' + nivel + '</span>' +
+      '<div style="flex:1;height:6px;background:var(--b1);border-radius:3px;">' +
+        '<div style="width:' + pct + '%;height:100%;background:var(--purple);border-radius:3px;"></div>' +
+      '</div>' +
+      '<span style="font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:800;color:var(--purple);min-width:28px;text-align:right">' + pres + '</span>' +
+      '<span style="font-size:10px;color:var(--muted2)">/' + d.total + '</span>' +
+    '</div>';
+  }).join('');
 }
 
 function renderSupBd(por){
@@ -868,16 +879,12 @@ function salvarTurno(){
   const isEdit=!!origId;
   const action=isEdit?'editTurno':'addTurno';
   const params=isEdit?{turnoId:origId,nome,base}:{turnoId:id,nome,base};
-  const btn=document.querySelector('#modal-turno .btn-blue');
-  if(btn){btn.disabled=true;btn.textContent='⏳ Salvando...';}
-  const reset=()=>{if(btn){btn.disabled=false;btn.textContent='💾 Salvar';}};
   call(action,params,d=>{
-    reset();
     if(d.error){toast('❌ '+d.error);return;}
     closeModal('modal-turno');
     loadTurnos();
     toast('✅ Turno '+(isEdit?'atualizado':'criado')+': '+nome);
-  },reset);
+  });
 }
 function editTurno(idEnc,nomeEnc,baseEnc){
   const id=dec(idEnc),nome=dec(nomeEnc),base=dec(baseEnc);
@@ -1004,14 +1011,13 @@ function salvarSup() {
   const btn = document.getElementById('btn-salvar-sup');
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
   const isEdit = !!orig;
-  const reset = () => { btn.disabled = false; btn.textContent = '💾 Salvar'; };
   call(isEdit ? 'editSup' : 'addSup', isEdit ? { nome, turno, nomeOriginal: orig } : { nome, turno }, d => {
-    reset();
+    btn.disabled = false; btn.textContent = '💾 Salvar';
     if (d.error) { toast('❌ ' + d.error); return; }
     closeModal('modal-sup');
     loadCfgSups();
     toast(isEdit ? '✅ ' + nome + ' atualizado!' : '✅ Supervisor ' + nome + ' criado!');
-  }, reset);
+  });
 }
 
 
@@ -1026,7 +1032,7 @@ function diag(msg) {
 function loadCols() {
   diag('Iniciando loadCols...');
   const tbody = document.getElementById('cols-body');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>';
   const countEl = document.getElementById('col-count');
   if (countEl) countEl.textContent = 'Carregando...';
 
@@ -1034,7 +1040,7 @@ function loadCols() {
   call('colaboradores', {}, d => {
     diag('Resposta recebida: ' + JSON.stringify(d).substring(0, 120));
     if (d.error) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty-st">❌ Erro API: ' + d.error + '</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-st">❌ Erro API: ' + d.error + '</td></tr>';
       return;
     }
     allCols = d.colaboradores || [];
@@ -1085,26 +1091,19 @@ function renderCols() {
     ' · ' + allCols.filter(e=>e.status==='Ativo').length + ' ativos no total';
 
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-st">Nenhum resultado. Ajuste os filtros.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-st">Nenhum resultado. Ajuste os filtros.</td></tr>';
     return;
   }
-
-  const nivelBadge = n => {
-    if (n === 'Mec1') return '<span class="badge b-green" style="font-size:10px">Mec1</span>';
-    if (n === 'Mec2') return '<span class="badge b-yel" style="font-size:10px">Mec2</span>';
-    if (n === 'Mec3') return '<span class="badge b-blue" style="font-size:10px">Mec3</span>';
-    return '<span style="color:var(--muted2);font-size:11px">—</span>';
-  };
 
   tbody.innerHTML = list.map((e, i) => {
     const isAtivo = e.status === 'Ativo';
     const tNome   = turnoNome(e.turno) || e.turno;
     return '<tr style="opacity:' + (isAtivo?1:0.55) + '">' +
       '<td style="border-radius:10px 0 0 10px;color:var(--muted2);font-size:11px;width:36px">' + (i+1) + '</td>' +
-      '<td><div style="font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:700">' + e.nome + '</div></td>' +
+      '<td><div style="font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:700;color:var(--text)">' + e.nome + '</div></td>' +
       '<td><span class="badge b-blue" style="font-size:10px">' + tNome + '</span></td>' +
       '<td style="font-size:11px;color:var(--muted)">' + e.setor + '</td>' +
-      '<td>' + nivelBadge(e.nivel) + '</td>' +
+      '<td>' + (e.nivel ? '<span class="badge" style="background:rgba(139,92,246,.1);color:var(--purple);border:1px solid rgba(139,92,246,.25);font-size:10px">' + e.nivel + '</span>' : '<span style="color:var(--muted2);font-size:11px">—</span>') + '</td>' +
       '<td><span class="badge ' + (isAtivo?'b-green':'b-gray') + '">' + (isAtivo?'Ativo':'Inativo') + '</span></td>' +
       '<td style="border-radius:0 10px 10px 0;text-align:center;">' +
         '<div style="display:flex;gap:5px;justify-content:center;">' +
@@ -1124,21 +1123,14 @@ function populateColTurnoModal() {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = '';
-  if (turnosData.length) {
-    turnosData.forEach(t => {
-      const o = document.createElement('option');
-      o.value = t.id;
-      o.textContent = t.nome + (t.base && t.base !== 'Principal' ? ' — ' + t.base : '');
-      sel.appendChild(o);
-    });
-  } else {
-    // Fallback enquanto turnosData não carregou
-    ['Primeiro','Segundo','Terceiro','Quarto'].forEach(v => {
-      const o = document.createElement('option');
-      o.value = v; o.textContent = v;
-      sel.appendChild(o);
-    });
-  }
+  // Usa turnos cadastrados se existirem, senão usa os que aparecem nos colaboradores
+  const source = turnosData.length ? turnosData : [...new Set(allCols.map(e=>e.turno))].map(id=>({id, nome:turnoNome(id)||id, base:''}));
+  source.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id || t;
+    o.textContent = (t.nome || t) + (t.base && t.base !== 'Principal' ? ' — ' + t.base : '');
+    sel.appendChild(o);
+  });
   if (cur) sel.value = cur;
 }
 
@@ -1148,7 +1140,6 @@ function abrirNovoCol() {
   document.getElementById('col-nome').value  = '';
   document.getElementById('col-orig').value  = '';
   document.getElementById('col-turno-orig').value = '';
-  document.getElementById('col-nivel').value = '';
   document.getElementById('col-migracao-aviso').style.display = 'none';
   document.getElementById('col-turno').onchange = null;
   openModal('modal-col');
@@ -1164,10 +1155,12 @@ function editCol(ne) {
   document.getElementById('modal-col-title').textContent = 'EDITAR COLABORADOR';
   document.getElementById('col-nome').value      = emp.nome;
   document.getElementById('col-setor').value     = emp.setor;
-  document.getElementById('col-nivel').value     = emp.nivel || '';
   document.getElementById('col-orig').value      = emp.nome;
   document.getElementById('col-turno-orig').value = emp.turno;
   document.getElementById('col-migracao-aviso').style.display = 'none';
+  // Nivel
+  const nivSel = document.getElementById('col-nivel');
+  if (nivSel) nivSel.value = emp.nivel || '';
 
   // Set turno — aguarda o select ser populado
   setTimeout(() => {
@@ -1195,32 +1188,24 @@ function salvarCol() {
   const nome  = document.getElementById('col-nome').value.trim();
   const turno = document.getElementById('col-turno').value;
   const setor = document.getElementById('col-setor').value;
-  const nivel = document.getElementById('col-nivel').value;
+  const nivel = document.getElementById('col-nivel')?.value || '';
   const orig  = document.getElementById('col-orig').value;
-
   if (!nome) { toast('⚠️ Digite o nome do colaborador'); return; }
   if (!turno){ toast('⚠️ Selecione o turno'); return; }
-
   const btn = document.getElementById('btn-salvar-col');
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
-
   const isEdit = !!orig;
   const params = isEdit
     ? { nome, turno, setor, nivel, nomeOriginal: orig }
     : { nome, turno, setor, nivel };
-
-  const resetCol = () => { btn.disabled = false; btn.textContent = '💾 Salvar'; };
   call(isEdit ? 'editCol' : 'addCol', params, d => {
-    resetCol();
+    btn.disabled = false; btn.textContent = '💾 Salvar';
     if (d.error) { toast('❌ ' + d.error); return; }
     closeModal('modal-col');
     loadCols();
-    toast(isEdit
-      ? `✅ ${nome} atualizado!`
-      : `✅ ${nome} cadastrado com sucesso!`);
-  }, resetCol);
+    toast(isEdit ? '✅ ' + nome + ' atualizado!' : '✅ ' + nome + ' cadastrado!');
+  });
 }
-
 function toggleColSt(ne, st) {
   const nome  = dec(ne);
   const novoSt = st === 'Ativo' ? 'false' : 'true';
@@ -1232,7 +1217,48 @@ function toggleColSt(ne, st) {
   });
 }
 
-// ════ EXPORT ════
+// ════ IMPORTAR NÍVEIS ════
+function executarImport() {
+  const txt = document.getElementById('import-txt').value.trim();
+  if (!txt) { toast('⚠️ Cole a lista primeiro'); return; }
+
+  // Parse: cada linha é "Nome\tNivel" ou "Nome  Nivel" (tab ou espaços multiplos)
+  const lista = [];
+  txt.split('\n').forEach(line => {
+    const parts = line.split('\t');
+    if (parts.length >= 2) {
+      const nome  = parts[0].trim();
+      const nivel = parts[1].trim();
+      if (nome && nivel) lista.push({ nome, nivel });
+    }
+  });
+
+  if (!lista.length) { toast('⚠️ Nenhuma linha válida encontrada. Use Tab entre nome e nível.'); return; }
+
+  const btn = document.getElementById('btn-importar');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  const res = document.getElementById('import-result');
+  res.style.display = 'none';
+
+  call('importNiveis', { lista: JSON.stringify(lista) }, d => {
+    btn.disabled = false; btn.textContent = '📥 Importar';
+    if (d.error) { toast('❌ ' + d.error); return; }
+
+    const cor = d.atualizados > 0 ? 'var(--green-d)' : 'var(--orange-d)';
+    const brd = d.atualizados > 0 ? 'rgba(0,200,83,.3)' : 'rgba(255,140,0,.3)';
+    res.style.display  = 'block';
+    res.style.background = cor;
+    res.style.border = '1px solid ' + brd;
+    res.innerHTML =
+      '<strong>✅ ' + d.atualizados + ' de ' + d.total + ' atualizados</strong>' +
+      (d.naoEncontrados.length
+        ? '<br><span style="color:var(--orange)">Não encontrados (' + d.naoEncontrados.length + '): ' + d.naoEncontrados.join(', ') + '</span>'
+        : '');
+
+    if (d.atualizados > 0) loadCols();
+    toast('✅ ' + d.atualizados + ' níveis importados!');
+  });
+}
 function exportCurrent(){
   const active=document.querySelector('.page.active')?.id;
   if(active==='page-ext')exportCSV('ext');
@@ -1267,14 +1293,13 @@ function enc(s){return encodeURIComponent(s);}
 function dec(s){return decodeURIComponent(s);}
 
 let _n=0;
-function call(action,params,cb,onErr){
+function call(action,params,cb){
   const cbName='_vg'+(++_n);
   const qs=Object.entries({...params,action,callback:cbName}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
   const sc=document.createElement('script');
-  const fail=(msg)=>{toast(msg);delete window[cbName];sc.remove();if(onErr)onErr();};
-  const to=setTimeout(()=>fail('❌ Timeout — redeploye o Apps Script'),18000);
+  const to=setTimeout(()=>{toast('❌ Timeout — URL correta?');delete window[cbName];sc.remove();},18000);
   window[cbName]=data=>{clearTimeout(to);delete window[cbName];sc.remove();cb(data);};
-  sc.onerror=()=>{clearTimeout(to);fail('❌ Erro de conexão');};
+  sc.onerror=()=>{clearTimeout(to);toast('❌ Erro de conexão');delete window[cbName];sc.remove();};
   sc.src=SCRIPT_URL+'?'+qs;document.head.appendChild(sc);
 }
 let _tt;

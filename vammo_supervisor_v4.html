@@ -52,8 +52,42 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px
 .btn-ghost:hover{border-color:var(--blue);color:var(--blue);}
 .btn-sm{padding:5px 11px;font-size:11px;}
 
-/* LAYOUT */
-.body{display:flex;flex:1;overflow:hidden;}
+/* TABS */
+.sup-tab{padding:0 18px;border:none;background:transparent;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;height:100%;font-weight:700;}
+.sup-tab:hover{color:var(--text);}
+.sup-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+/* PAGES */
+.sup-page{display:none;flex:1;overflow:hidden;}
+.sup-page.active{display:flex;}
+
+/* FEEDBACK PAGE */
+.fb-layout{display:grid;grid-template-columns:280px 1fr;flex:1;overflow:hidden;}
+.fb-left{background:var(--white);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden;padding:16px;}
+.fb-right{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+.fb-lbl{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:6px;}
+.fb-section{margin-bottom:18px;}
+
+/* STAT CARDS */
+.fb-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px 16px;flex-shrink:0;}
+.fb-stat{background:var(--white);border:1px solid var(--b1);border-radius:10px;padding:10px 12px;text-align:center;box-shadow:var(--shadow);}
+.fb-stat-n{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;line-height:1;}
+.fb-stat-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px;font-weight:600;}
+
+/* TIMELINE */
+.timeline-wrap{flex:1;overflow-y:auto;padding:0 16px 20px;}
+.timeline-item{display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;}
+.tl-date{font-size:11px;color:var(--muted);min-width:70px;padding-top:3px;font-weight:600;}
+.tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.tl-card{flex:1;background:var(--white);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;box-shadow:var(--shadow);font-size:12px;}
+.tl-status{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;}
+.tl-detail{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* FEEDBACK BOX */
+.fb-box-wrap{padding:14px 16px;border-top:1px solid var(--b1);background:var(--white);flex-shrink:0;}
+.fb-textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--b2);border-radius:8px;padding:10px 12px;font-size:12px;font-family:'Barlow',sans-serif;resize:vertical;min-height:100px;outline:none;}
+.fb-textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-d);background:var(--white);}
+
 
 /* SIDEBAR */
 .sb{width:228px;background:var(--white);border-right:1px solid var(--b1);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
@@ -172,12 +206,19 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
     <option value="">Carregando...</option>
   </select>
   <input type="date" id="inp-data" onchange="onDateChange()" style="width:148px;">
+  <div class="hd-div"></div>
+  <!-- TABS -->
+  <div style="display:flex;height:100%;margin-left:8px;">
+    <button class="sup-tab active" id="tab-chamada" onclick="goTab('chamada',this)">📋 Chamada</button>
+    <button class="sup-tab" id="tab-feedback" onclick="goTab('feedback',this)">💬 Feedback</button>
+  </div>
   <div style="flex:1;"></div>
   <div class="save-ind hidden" id="save-ind">—</div>
   <button class="btn btn-ghost btn-sm" onclick="reloadPresencas()">↺ Recarregar</button>
   <button class="btn btn-blue" onclick="salvar()" id="btn-salvar">💾 Salvar Chamada</button>
 </div>
 
+<div class="sup-page active" id="page-chamada">
 <div class="body">
   <div class="sb">
     <div class="sb-sec">
@@ -249,6 +290,87 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
   </div>
 </div>
 
+</div>
+
+<!-- FEEDBACK PAGE -->
+<div class="sup-page" id="page-feedback">
+  <div class="fb-layout">
+    <!-- LEFT: filtros -->
+    <div class="fb-left">
+      <div class="fb-section">
+        <div class="fb-lbl">Colaborador</div>
+        <select id="fb-colaborador" style="width:100%;" onchange="onFbColChange()">
+          <option value="">— selecione —</option>
+        </select>
+      </div>
+      <div class="fb-section">
+        <div class="fb-lbl">Período</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <button class="preset" onclick="fbPreset(1,this)">📅 Hoje</button>
+          <button class="preset active" onclick="fbPreset(7,this)">📅 Última semana</button>
+          <button class="preset" onclick="fbPreset(30,this)">📅 Último mês</button>
+          <button class="preset" onclick="fbPreset(90,this)">📅 Últimos 3 meses</button>
+          <button class="preset" onclick="fbPreset(180,this)">📅 Últimos 6 meses</button>
+        </div>
+      </div>
+      <div class="fb-section">
+        <div class="fb-lbl">Período personalizado</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <input type="date" id="fb-ini" onchange="carregarHistorico()">
+          <input type="date" id="fb-fim" onchange="carregarHistorico()">
+        </div>
+      </div>
+      <button class="btn btn-blue" onclick="gerarFeedback()" style="width:100%;margin-top:auto;padding:10px;">
+        ✨ Gerar Feedback
+      </button>
+    </div>
+
+    <!-- RIGHT: histórico + feedback -->
+    <div class="fb-right">
+      <!-- Header do colaborador -->
+      <div id="fb-col-header" style="background:var(--white);border-bottom:1px solid var(--b1);padding:14px 18px;flex-shrink:0;display:none;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div>
+            <div style="font-family:Barlow Condensed,sans-serif;font-size:22px;font-weight:800;" id="fb-col-nome">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="fb-col-info">—</div>
+          </div>
+          <div style="margin-left:auto;text-align:center;background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:8px 16px;">
+            <div style="font-family:Barlow Condensed,sans-serif;font-size:28px;font-weight:800;" id="fb-pct-n">—</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Presença</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="fb-stats" id="fb-stats" style="display:none;">
+        <div class="fb-stat"><div class="fb-stat-n" id="fbs-pres" style="color:var(--green)">0</div><div class="fb-stat-l">Presentes</div></div>
+        <div class="fb-stat"><div class="fb-stat-n" id="fbs-atra" style="color:var(--yellow)">0</div><div class="fb-stat-l">Atrasos</div></div>
+        <div class="fb-stat"><div class="fb-stat-n" id="fbs-falt" style="color:var(--red)">0</div><div class="fb-stat-l">Faltas</div></div>
+        <div class="fb-stat"><div class="fb-stat-n" id="fbs-ates" style="color:var(--orange)">0</div><div class="fb-stat-l">Atestados</div></div>
+        <div class="fb-stat"><div class="fb-stat-n" id="fbs-afas" style="color:var(--purple)">0</div><div class="fb-stat-l">Afastados</div></div>
+        <div class="fb-stat"><div class="fb-stat-n" id="fbs-tot" style="color:var(--blue)">0</div><div class="fb-stat-l">Total dias</div></div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="timeline-wrap" id="fb-timeline">
+        <div style="text-align:center;padding:60px;color:var(--muted);font-size:13px;">
+          Selecione um colaborador para ver o histórico
+        </div>
+      </div>
+
+      <!-- Feedback box -->
+      <div class="fb-box-wrap" id="fb-box" style="display:none;">
+        <div class="fb-lbl" style="margin-bottom:8px;">✨ Texto de Feedback (editável)</div>
+        <textarea class="fb-textarea" id="fb-texto" placeholder="Clique em Gerar Feedback..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm" onclick="copiarFeedback()">📋 Copiar</button>
+          <button class="btn btn-blue btn-sm" onclick="gerarFeedback()">↺ Regenerar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-conflito">
   <div class="modal">
     <h3>⚠️ Conflito de datas</h3>
@@ -264,7 +386,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzY7Xk9KapGbm0NjdegWE5etlTZuu3lCXNx4QpyvVt7yJmos8zBa0OPdzFoFPiGxG0/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzza6oBOjMrSxoAJder5bHWVT-8eEVPyW0xdd5-Pbqnce3Dj2dLMBXxYtJJR8YIcTE/exec';
 
 const OCUPACOES = ['Rampa','Qualidade','Diagnóstico','Mesa','Driver','Serviço Especial'];
 const SC = {'Presente':'s-pres','Atraso +15min':'s-atra','Faltou':'s-falt','Afastado':'s-afas','Férias':'s-fer','Folga':'s-folg'};
@@ -274,6 +396,197 @@ const DIAS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-fe
 
 let team = [], state = {}, turnoMap = {}, dirty = false;
 let periodoQueue = [], periodoIdx = 0, periodoCallback = null;
+
+// ════ TABS ════
+function goTab(tab, btn) {
+  document.querySelectorAll('.sup-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.sup-page').forEach(p => { p.classList.remove('active'); p.style.display='none'; });
+  const pg = document.getElementById('page-' + tab);
+  pg.classList.add('active');
+  pg.style.display = 'flex';
+  if (tab === 'feedback') initFeedback();
+}
+
+// ════ FEEDBACK ════
+let fbHistorico = null;
+let fbDias = 7;
+
+function initFeedback() {
+  // Popula dropdown de colaboradores com o time do supervisor
+  const sel = document.getElementById('fb-colaborador');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— selecione —</option>';
+  team.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(emp => {
+    const o = document.createElement('option');
+    o.value = emp.nome; o.textContent = emp.nome;
+    sel.appendChild(o);
+  });
+  if (cur) sel.value = cur;
+  // Preset padrão: última semana
+  fbPreset(7, document.querySelector('#page-feedback .preset.active'));
+}
+
+function fbPreset(dias, btn) {
+  fbDias = dias;
+  document.querySelectorAll('#page-feedback .preset').forEach(b => {
+    b.classList.remove('active');
+    b.style.borderColor=''; b.style.color=''; b.style.background='';
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.style.borderColor='var(--blue)'; btn.style.color='var(--blue)'; btn.style.background='var(--blue-d)';
+  }
+  const hoje = new Date(), ini = new Date();
+  ini.setDate(hoje.getDate() - dias + 1);
+  document.getElementById('fb-ini').value = fmtIn(ini);
+  document.getElementById('fb-fim').value = fmtIn(hoje);
+  if (document.getElementById('fb-colaborador').value) carregarHistorico();
+}
+
+function onFbColChange() {
+  document.getElementById('fb-box').style.display = 'none';
+  document.getElementById('fb-texto').value = '';
+  if (document.getElementById('fb-colaborador').value) carregarHistorico();
+}
+
+function carregarHistorico() {
+  const nome = document.getElementById('fb-colaborador').value;
+  const ini  = document.getElementById('fb-ini').value;
+  const fim  = document.getElementById('fb-fim').value;
+  if (!nome || !ini || !fim) return;
+
+  document.getElementById('fb-timeline').innerHTML =
+    '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+  document.getElementById('fb-col-header').style.display = 'none';
+  document.getElementById('fb-stats').style.display = 'none';
+
+  call('historico', { nome, inicio: toDisp(ini), fim: toDisp(fim) }, d => {
+    if (d.error) {
+      document.getElementById('fb-timeline').innerHTML =
+        '<div style="text-align:center;padding:40px;color:var(--red)">❌ ' + d.error + '</div>';
+      return;
+    }
+    fbHistorico = d;
+    renderHistorico(d);
+  });
+}
+
+function renderHistorico(d) {
+  const c = d.contadores;
+  const emp = team.find(e => e.nome === d.nome) || {};
+
+  // Header
+  const header = document.getElementById('fb-col-header');
+  header.style.display = 'block';
+  document.getElementById('fb-col-nome').textContent = d.nome;
+  document.getElementById('fb-col-info').textContent =
+    [emp.setor, d.colInfo.nivel, turnoMap[d.colInfo.turno]||d.colInfo.turno].filter(Boolean).join(' · ');
+
+  const pct = d.pctPresenca;
+  const pctEl = document.getElementById('fb-pct-n');
+  pctEl.textContent = pct !== null ? pct + '%' : '—';
+  pctEl.style.color = pct === null ? 'var(--muted)' : pct >= 90 ? 'var(--green)' : pct >= 75 ? 'var(--orange)' : 'var(--red)';
+
+  // Stats
+  document.getElementById('fb-stats').style.display = 'grid';
+  document.getElementById('fbs-pres').textContent = c.presentes;
+  document.getElementById('fbs-atra').textContent = c.atrasos;
+  document.getElementById('fbs-falt').textContent = c.faltas;
+  document.getElementById('fbs-ates').textContent = c.atestados;
+  document.getElementById('fbs-afas').textContent = c.afastados;
+  document.getElementById('fbs-tot').textContent  = c.total;
+
+  // Timeline
+  const STATUS_CONFIG = {
+    'Presente':       { cor:'var(--green)',   icon:'✅' },
+    'Atraso +15min':  { cor:'var(--yellow)',  icon:'⏰' },
+    'Faltou':         { cor:'var(--red)',     icon:'❌' },
+    'Atestado':       { cor:'var(--orange)',  icon:'🏥' },
+    'Afastado':       { cor:'var(--purple)',  icon:'🤕' },
+    'Férias':         { cor:'var(--cyan)',    icon:'🏖️' },
+    'Folga':          { cor:'var(--muted)',   icon:'🔘' },
+    'Sem registro':   { cor:'var(--muted2)',  icon:'⚪' },
+  };
+
+  if (!d.registros.length) {
+    document.getElementById('fb-timeline').innerHTML =
+      '<div style="text-align:center;padding:60px;color:var(--muted);">Nenhum registro no período</div>';
+    return;
+  }
+
+  document.getElementById('fb-timeline').innerHTML = d.registros.map(r => {
+    const cfg = STATUS_CONFIG[r.status] || { cor:'var(--muted)', icon:'—' };
+    return '<div class="timeline-item">' +
+      '<div class="tl-date">' + r.diaSemana + '<br>' + r.data + '</div>' +
+      '<div class="tl-dot" style="background:' + cfg.cor + ';margin-top:6px;"></div>' +
+      '<div class="tl-card">' +
+        '<div class="tl-status" style="color:' + cfg.cor + '">' + cfg.icon + ' ' + r.status + '</div>' +
+        (r.ocupacao ? '<div class="tl-detail">Ocupação: ' + r.ocupacao + '</div>' : '') +
+        (r.obs      ? '<div class="tl-detail">Obs: ' + r.obs + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function gerarFeedback() {
+  if (!fbHistorico) { toast('⚠️ Carregue o histórico primeiro'); return; }
+  const d = fbHistorico;
+  const c = d.contadores;
+  const pct = d.pctPresenca;
+  const ini = document.getElementById('fb-ini').value;
+  const fim = document.getElementById('fb-fim').value;
+  const periodo = 'de ' + toDisp(ini) + ' a ' + toDisp(fim);
+
+  const nivel = d.colInfo.nivel || 'Mecânico';
+  const turno = turnoMap[d.colInfo.turno] || d.colInfo.turno || 'turno';
+
+  let avaliacao = '';
+  if (pct === null) avaliacao = 'não possui registros suficientes para avaliação neste período';
+  else if (pct >= 95) avaliacao = `apresentou excelente frequência (${pct}% de presença), demonstrando comprometimento e responsabilidade`;
+  else if (pct >= 85) avaliacao = `apresentou boa frequência (${pct}% de presença) no período avaliado`;
+  else if (pct >= 70) avaliacao = `apresentou frequência abaixo do esperado (${pct}% de presença), necessitando atenção`;
+  else avaliacao = `apresentou frequência crítica (${pct}% de presença), situação que requer ação imediata`;
+
+  let detalhes = [];
+  if (c.presentes > 0) detalhes.push(`${c.presentes} dia(s) presente`);
+  if (c.atrasos  > 0) detalhes.push(`${c.atrasos} atraso(s) acima de 15 min`);
+  if (c.faltas   > 0) detalhes.push(`${c.faltas} falta(s) injustificada(s)`);
+  if (c.atestados > 0) detalhes.push(`${c.atestados} atestado(s) médico(s)`);
+  if (c.afastados > 0) detalhes.push(`${c.afastados} dia(s) afastado(s)`);
+
+  const texto =
+`Feedback de Frequência — ${d.nome}
+${nivel} | ${turno}
+Período: ${periodo}
+
+${d.nome} ${avaliacao}.
+
+Resumo do período:
+${detalhes.map(d => '• ' + d).join('\n')}
+
+${c.faltas + c.atrasos > 3
+  ? `⚠️ Atenção: o colaborador acumula ${c.faltas} falta(s) e ${c.atrasos} atraso(s) no período. Recomenda-se uma conversa formal para alinhamento.`
+  : c.faltas + c.atrasos > 0
+    ? `Observação: registrou ${c.faltas} falta(s) e ${c.atrasos} atraso(s). Monitorar continuidade.`
+    : `✅ Sem ocorrências de falta ou atraso no período.`}
+
+Supervisor: ${document.getElementById('sel-sup').value}
+Data: ${new Date().toLocaleDateString('pt-BR')}`;
+
+  document.getElementById('fb-texto').value = texto;
+  document.getElementById('fb-box').style.display = 'block';
+  document.getElementById('fb-texto').scrollIntoView({ behavior:'smooth' });
+}
+
+function copiarFeedback() {
+  const txt = document.getElementById('fb-texto').value;
+  navigator.clipboard.writeText(txt).then(() => toast('✅ Copiado!')).catch(() => {
+    document.getElementById('fb-texto').select();
+    document.execCommand('copy');
+    toast('✅ Copiado!');
+  });
+}
 
 function init() {
   const today = new Date();

@@ -575,7 +575,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
     <input type="hidden" id="col-turno-orig">
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-col')">Cancelar</button>
-      <button class="btn btn-blue" id="btn-salvar-col" onclick="sarCol()">💾 Salvar</button>
+      <button class="btn btn-blue" id="btn-salvar-col" onclick="salvarCol()">💾 Salvar</button>
     </div>
   </div>
 </div>
@@ -602,7 +602,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzza6oBOjMrSxoAJder5bHWVT-8eEVPyW0xdd5-Pbqnce3Dj2dLMBXxYtJJR8YIcTE/exec';
+const SCRIPT_URL = 'SUA_URL_DO_APPS_SCRIPT_AQUI';
 
 let sups=[], allCols=[], teamData=[], selSup=null;
 let turnoMap={}, turnosData=[];
@@ -1123,27 +1123,59 @@ function populateColTurnoModal() {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = '';
-  // Usa turnos cadastrados se existirem, senão usa os que aparecem nos colaboradores
-  const source = turnosData.length ? turnosData : [...new Set(allCols.map(e=>e.turno))].map(id=>({id, nome:turnoNome(id)||id, base:''}));
-  source.forEach(t => {
-    const o = document.createElement('option');
-    o.value = t.id || t;
-    o.textContent = (t.nome || t) + (t.base && t.base !== 'Principal' ? ' — ' + t.base : '');
-    sel.appendChild(o);
-  });
+
+  // Prioridade 1: turnos cadastrados
+  if (turnosData.length) {
+    turnosData.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = t.nome + (t.base && t.base !== 'Principal' ? ' — ' + t.base : '');
+      sel.appendChild(o);
+    });
+  }
+  // Prioridade 2: IDs extraídos dos colaboradores já carregados
+  else if (allCols.length) {
+    [...new Set(allCols.map(e => e.turno))].sort().forEach(id => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = turnoNome(id) || id;
+      sel.appendChild(o);
+    });
+  }
+  // Fallback fixo — garante que nunca fica vazio
+  else {
+    [['Primeiro','1º Turno'],['Segundo','2º Turno']].forEach(([v,t]) => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = t;
+      sel.appendChild(o);
+    });
+  }
+
   if (cur) sel.value = cur;
 }
 
 function abrirNovoCol() {
-  populateColTurnoModal();
-  document.getElementById('modal-col-title').textContent = 'NOVO COLABORADOR';
-  document.getElementById('col-nome').value  = '';
-  document.getElementById('col-orig').value  = '';
-  document.getElementById('col-turno-orig').value = '';
-  document.getElementById('col-migracao-aviso').style.display = 'none';
-  document.getElementById('col-turno').onchange = null;
-  openModal('modal-col');
-  setTimeout(() => document.getElementById('col-nome').focus(), 80);
+  const abrir = () => {
+    populateColTurnoModal();
+    document.getElementById('modal-col-title').textContent = 'NOVO COLABORADOR';
+    document.getElementById('col-nome').value  = '';
+    document.getElementById('col-orig').value  = '';
+    document.getElementById('col-turno-orig').value = '';
+    document.getElementById('col-migracao-aviso').style.display = 'none';
+    document.getElementById('col-turno').onchange = null;
+    if (document.getElementById('col-nivel')) document.getElementById('col-nivel').value = '';
+    openModal('modal-col');
+    setTimeout(() => document.getElementById('col-nome').focus(), 80);
+  };
+
+  // Se turnosData já carregado, abre direto
+  if (turnosData.length) { abrir(); return; }
+
+  // Senão carrega turnos primeiro
+  call('turnos', {}, d => {
+    turnosData = d.turnos || [];
+    (d.turnos||[]).forEach(t => { turnoMap[t.id] = t.nome; });
+    abrir();
+  });
 }
 
 function editCol(ne) {

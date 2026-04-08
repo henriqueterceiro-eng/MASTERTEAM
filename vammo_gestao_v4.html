@@ -627,7 +627,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6FLEEKOagndLRIAwtGvEEI6txt3vgajV9srrpO7I4AvaFle7X1UdCRKmdOgvAc_pQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-_C7lQbQ9W-Q2UNb3gD9Amatv8lP5leDmEt6BdL4eCNviLc-50uyqmBDf3kkyVQKf/exec';
 
 let sups=[], allCols=[], teamData=[], selSup=null;
 let turnoMap={}, turnosData=[];
@@ -643,22 +643,19 @@ function iniciarBacklog() {
   setInterval(buscarBacklog, 60000);
 }
 
-function buscarBacklog() {
+async function buscarBacklog() {
   const numEl = document.getElementById('bl-num');
   const timEl = document.getElementById('bl-time');
   const arrEl = document.getElementById('bl-arrow');
   const difEl = document.getElementById('bl-diff');
   if (!numEl) return;
-  if (timEl) timEl.textContent = 'buscando...';
-
-  call('backlog', {}, d => {
-    if (d.error) {
-      if (numEl) { numEl.textContent = 'ERR'; numEl.style.opacity='1'; }
-      if (timEl) timEl.textContent = d.error + (d.debug ? ' | ' + d.debug : '');
-      console.warn('Backlog error:', d);
-      return;
-    }
-    const total = d.total;
+  try {
+    const res  = await fetch('https://metabase.vammo.com/api/public/card/4c3e3148-e516-4261-a46e-244a414f3d79/query/json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) throw new Error('Sem dados');
+    const total = Number(data[0].total_backlog);
+    if (isNaN(total)) throw new Error('Campo total_backlog nao encontrado');
     numEl.style.opacity = '0';
     setTimeout(() => {
       numEl.textContent = total.toLocaleString('pt-BR');
@@ -671,10 +668,15 @@ function buscarBacklog() {
         setTimeout(() => { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }, 8000);
       } else { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }
       blAnterior = total;
-      if (timEl) timEl.textContent = d.atualizadoEm || new Date().toLocaleTimeString('pt-BR');
+      if (timEl) timEl.textContent = new Date().toLocaleTimeString('pt-BR');
     }, 150);
-  });
+  } catch(err) {
+    if (numEl) { numEl.textContent = 'ERR'; numEl.style.opacity='1'; }
+    if (timEl) timEl.textContent = err.message;
+    console.warn('Backlog err:', err);
+  }
 }
+
 
 function init() {
   setPreset('ext',15,document.querySelector('#page-ext .preset.active'));

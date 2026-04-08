@@ -207,9 +207,34 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 /* TOAST */
 .toast{position:fixed;bottom:18px;right:24px;background:var(--text);color:#fff;padding:9px 20px;border-radius:10px;font-size:12px;z-index:400;opacity:0;transition:all .25s;transform:translateY(8px);pointer-events:none;box-shadow:var(--shadow-md);}
 .toast.show{opacity:1;transform:translateY(0);}
+
+/* ── LETREIRO BACKLOG ─────────────────── */
+.backlog-bar{display:flex;align-items:center;justify-content:center;gap:16px;background:#0D1B2A;border-bottom:2px solid #1a2e45;padding:0 24px;height:44px;flex-shrink:0;font-family:'Barlow Condensed',sans-serif;}
+.bl-label{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#4a6a8a;font-weight:700;}
+.bl-num{font-size:28px;font-weight:900;letter-spacing:3px;color:#2EC2FF;text-shadow:0 0 18px rgba(46,194,255,.5);transition:color .4s,text-shadow .4s,opacity .3s;font-variant-numeric:tabular-nums;}
+.bl-num.up{color:#F23557;text-shadow:0 0 18px rgba(242,53,87,.55);}
+.bl-num.down{color:#00C853;text-shadow:0 0 18px rgba(0,200,83,.55);}
+.bl-arrow{font-size:20px;transition:all .4s;}
+.bl-diff{font-size:13px;font-weight:700;letter-spacing:1px;transition:color .4s;}
+.bl-diff.up{color:#F23557;}
+.bl-diff.down{color:#00C853;}
+.bl-time{font-size:10px;color:#2a4a6a;letter-spacing:1px;margin-left:8px;}
+.bl-dot{width:7px;height:7px;border-radius:50%;background:#2EC2FF;box-shadow:0 0 8px #2EC2FF;animation:pulse-dot 1.5s infinite;}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+
 </style>
 </head>
 <body>
+
+<!-- LETREIRO BACKLOG -->
+<div class="backlog-bar">
+  <div class="bl-dot"></div>
+  <div class="bl-label">BACKLOG TOTAL</div>
+  <div class="bl-num" id="bl-num">—</div>
+  <div class="bl-arrow" id="bl-arrow"></div>
+  <div class="bl-diff" id="bl-diff"></div>
+  <div class="bl-time" id="bl-time">atualizando...</div>
+</div>
 
 <div class="hd">
   <div class="logo-wrap">
@@ -602,7 +627,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySsFraWZINfL72BYTlzf0Skyz-qTrGuk5Xy3Qmanj5UTD8IKJHJORsQj2q4oOL_Gru/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6FLEEKOagndLRIAwtGvEEI6txt3vgajV9srrpO7I4AvaFle7X1UdCRKmdOgvAc_pQ/exec';
 
 let sups=[], allCols=[], teamData=[], selSup=null;
 let turnoMap={}, turnosData=[];
@@ -613,6 +638,7 @@ function init() {
   setPreset('ext',15,document.querySelector('#page-ext .preset.active'));
   setPreset('bon',15,document.querySelector('#page-bonus .preset.active'));
   document.getElementById('dash-data').value = fmtIn(new Date());
+  iniciarBacklog();
 
   call('supervisores',{},d=>{
     sups = d.supervisores || []; // [{nome, turno}]

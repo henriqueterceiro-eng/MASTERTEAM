@@ -194,9 +194,34 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 /* TOAST */
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-md);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── LETREIRO BACKLOG ─────────────────── */
+.backlog-bar{display:flex;align-items:center;justify-content:center;gap:16px;background:#0D1B2A;border-bottom:2px solid #1a2e45;padding:0 24px;height:44px;flex-shrink:0;font-family:'Barlow Condensed',sans-serif;}
+.bl-label{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#4a6a8a;font-weight:700;}
+.bl-num{font-size:28px;font-weight:900;letter-spacing:3px;color:#2EC2FF;text-shadow:0 0 18px rgba(46,194,255,.5);transition:color .4s,text-shadow .4s,opacity .3s;font-variant-numeric:tabular-nums;}
+.bl-num.up{color:#F23557;text-shadow:0 0 18px rgba(242,53,87,.55);}
+.bl-num.down{color:#00C853;text-shadow:0 0 18px rgba(0,200,83,.55);}
+.bl-arrow{font-size:20px;transition:all .4s;}
+.bl-diff{font-size:13px;font-weight:700;letter-spacing:1px;transition:color .4s;}
+.bl-diff.up{color:#F23557;}
+.bl-diff.down{color:#00C853;}
+.bl-time{font-size:10px;color:#2a4a6a;letter-spacing:1px;margin-left:8px;}
+.bl-dot{width:7px;height:7px;border-radius:50%;background:#2EC2FF;box-shadow:0 0 8px #2EC2FF;animation:pulse-dot 1.5s infinite;}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+
 </style>
 </head>
 <body>
+
+<!-- LETREIRO BACKLOG -->
+<div class="backlog-bar">
+  <div class="bl-dot"></div>
+  <div class="bl-label">BACKLOG TOTAL</div>
+  <div class="bl-num" id="bl-num">—</div>
+  <div class="bl-arrow" id="bl-arrow"></div>
+  <div class="bl-diff" id="bl-diff"></div>
+  <div class="bl-time" id="bl-time">atualizando...</div>
+</div>
 
 <div class="hd">
   <div class="logo-wrap">
@@ -404,7 +429,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzza6oBOjMrSxoAJder5bHWVT-8eEVPyW0xdd5-Pbqnce3Dj2dLMBXxYtJJR8YIcTE/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6FLEEKOagndLRIAwtGvEEI6txt3vgajV9srrpO7I4AvaFle7X1UdCRKmdOgvAc_pQ/exec';
 
 const OCUPACOES = ['Rampa','Qualidade','Diagnóstico','Mesa','Driver','Serviço Especial'];
 const SC = {'Presente':'s-pres','Atraso +15min':'s-atra','Faltou':'s-falt','Afastado':'s-afas','Férias':'s-fer','Folga':'s-folg'};
@@ -771,6 +796,47 @@ function copiarFeedback() {
     document.getElementById('fb-texto').select();
     document.execCommand('copy');
     toast('✅ Copiado!');
+  });
+}
+
+
+// ════ LETREIRO BACKLOG ════
+let blAnterior = null;
+
+function iniciarBacklog() {
+  buscarBacklog();
+  setInterval(buscarBacklog, 60000);
+}
+
+function buscarBacklog() {
+  call('backlog', {}, d => {
+    if (d.error) {
+      const el = document.getElementById('bl-num');
+      if (el) el.textContent = 'ERR';
+      return;
+    }
+    const atual = d.total;
+    const numEl = document.getElementById('bl-num');
+    const arrEl = document.getElementById('bl-arrow');
+    const difEl = document.getElementById('bl-diff');
+    const timEl = document.getElementById('bl-time');
+    if (!numEl) return;
+    numEl.style.opacity = '0';
+    setTimeout(() => {
+      numEl.textContent = atual.toLocaleString('pt-BR');
+      numEl.style.opacity = '1';
+      if (blAnterior !== null && atual !== blAnterior) {
+        const diff = atual - blAnterior;
+        const pct  = Math.abs(Math.round(diff / blAnterior * 100));
+        const subiu = diff > 0;
+        numEl.className = 'bl-num ' + (subiu ? 'up' : 'down');
+        if (arrEl) arrEl.textContent = subiu ? '▲' : '▼';
+        if (difEl) { difEl.textContent = (subiu?'+':'') + diff + ' (' + pct + '%)'; difEl.className = 'bl-diff ' + (subiu?'up':'down'); }
+        setTimeout(() => { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }, 8000);
+      } else { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }
+      blAnterior = atual;
+      if (timEl) timEl.textContent = d.atualizadoEm;
+    }, 150);
   });
 }
 

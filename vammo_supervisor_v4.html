@@ -802,42 +802,64 @@ function copiarFeedback() {
 
 // ════ LETREIRO BACKLOG ════
 let blAnterior = null;
+const BL_URL = 'https://metabase.vammo.com/api/public/card/4c3e3148-e516-4261-a46e-244a414f3d79/query/json';
 
 function iniciarBacklog() {
   buscarBacklog();
   setInterval(buscarBacklog, 60000);
 }
 
-function buscarBacklog() {
-  call('backlog', {}, d => {
-    if (d.error) {
-      const el = document.getElementById('bl-num');
-      if (el) el.textContent = 'ERR';
-      return;
+async function buscarBacklog() {
+  const numEl = document.getElementById('bl-num');
+  const timEl = document.getElementById('bl-time');
+  const arrEl = document.getElementById('bl-arrow');
+  const difEl = document.getElementById('bl-diff');
+  if (!numEl) return;
+
+  try {
+    const res  = await fetch(BL_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    // data pode ser array de objetos ou {data:{rows:[...]}}
+    let total = null;
+    if (Array.isArray(data) && data.length > 0) {
+      const row   = data[0];
+      const chave = Object.keys(row).find(k => k.toLowerCase().includes('backlog') || k.toLowerCase().includes('total'));
+      total = chave ? Number(row[chave]) : Number(Object.values(row)[0]);
+    } else if (data && data.data && data.data.rows) {
+      total = Number(data.data.rows[0][0]);
     }
-    const atual = d.total;
-    const numEl = document.getElementById('bl-num');
-    const arrEl = document.getElementById('bl-arrow');
-    const difEl = document.getElementById('bl-diff');
-    const timEl = document.getElementById('bl-time');
-    if (!numEl) return;
+
+    if (total === null || isNaN(total)) throw new Error('Formato inesperado');
+
+    // Anima troca
     numEl.style.opacity = '0';
     setTimeout(() => {
-      numEl.textContent = atual.toLocaleString('pt-BR');
+      numEl.textContent = total.toLocaleString('pt-BR');
       numEl.style.opacity = '1';
-      if (blAnterior !== null && atual !== blAnterior) {
-        const diff = atual - blAnterior;
-        const pct  = Math.abs(Math.round(diff / blAnterior * 100));
+
+      if (blAnterior !== null && total !== blAnterior) {
+        const diff  = total - blAnterior;
+        const pct   = Math.abs(Math.round(diff / blAnterior * 100));
         const subiu = diff > 0;
         numEl.className = 'bl-num ' + (subiu ? 'up' : 'down');
         if (arrEl) arrEl.textContent = subiu ? '▲' : '▼';
         if (difEl) { difEl.textContent = (subiu?'+':'') + diff + ' (' + pct + '%)'; difEl.className = 'bl-diff ' + (subiu?'up':'down'); }
         setTimeout(() => { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }, 8000);
-      } else { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }
-      blAnterior = atual;
-      if (timEl) timEl.textContent = d.atualizadoEm;
+      } else {
+        numEl.className = 'bl-num';
+        if (arrEl) arrEl.textContent = '';
+        if (difEl) difEl.textContent = '';
+      }
+      blAnterior = total;
+      if (timEl) timEl.textContent = new Date().toLocaleTimeString('pt-BR');
     }, 150);
-  });
+
+  } catch(err) {
+    console.warn('Backlog fetch error:', err.message);
+    if (timEl) timEl.textContent = 'erro: ' + err.message;
+  }
 }
 
 function init() {

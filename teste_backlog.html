@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head><title>Teste Backlog</title>
+<style>
+body{font-family:monospace;padding:40px;background:#111;color:#fff;}
+#r{font-size:20px;margin-top:20px;padding:20px;background:#222;border-radius:8px;white-space:pre-wrap;}
+.ok{color:#00C853;} .err{color:#F23557;} .warn{color:#F5B800;}
+</style>
+</head>
+<body>
+<h2>🔍 Teste de conexão com Metabase</h2>
+<button onclick="testar()" style="font-size:16px;padding:10px 24px;background:#2EC2FF;border:none;border-radius:8px;cursor:pointer;">▶ Testar agora</button>
+<div id="r">Clique em Testar...</div>
+<script>
+async function testar() {
+  const r = document.getElementById('r');
+  r.className = 'warn'; r.textContent = '⏳ Fazendo fetch...';
+  const url = 'https://metabase.vammo.com/api/public/card/4c3e3148-e516-4261-a46e-244a414f3d79/query/json';
+  try {
+    r.textContent += '\n→ URL: ' + url;
+    const res = await fetch(url);
+    r.textContent += '\n→ Status HTTP: ' + res.status;
+    r.textContent += '\n→ CORS OK ✅';
+    const headers = {};
+    res.headers.forEach((v,k) => { if(k.toLowerCase().includes('access')) headers[k]=v; });
+    r.textContent += '\n→ Headers CORS: ' + JSON.stringify(headers);
+    const data = await res.json();
+    r.textContent += '\n→ JSON OK ✅ — ' + data.length + ' linhas';
+    r.textContent += '\n→ total_backlog hoje: ' + data[0].total_backlog;
+    r.textContent += '\n→ dia_ordem: ' + data[0].dia_ordem;
+    r.className = 'ok';
+    r.textContent += '\n\n✅ TUDO OK — O letreiro deveria funcionar!';
+  } catch(err) {
+    r.className = 'err';
+    r.textContent += '\n\n❌ ERRO: ' + err.message;
+    r.textContent += '\n\nSe o erro for "CORS" ou "Failed to fetch":';
+    r.textContent += '\n→ O Metabase não permite acesso cross-origin';
+    r.textContent += '\n→ Precisamos de outra solução';
+  }
+}
+</script>
+</body>
+</html>

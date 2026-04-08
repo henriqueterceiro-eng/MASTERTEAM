@@ -214,8 +214,12 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 <body>
 
 <!-- LETREIRO BACKLOG -->
-<div class="backlog-bar">
-  <div class="bl-dot"></div>
+<div class="backlog-bar" id="backlog-bar">
+  <div class="ticker-track" id="ticker-track">
+    <!-- preenchido pelo JS -->
+  </div>
+  <span class="ticker-time" id="ticker-time">--:--:--</span>
+</div>
   <div class="bl-label">BACKLOG TOTAL</div>
   <div class="bl-num" id="bl-num">—</div>
   <div class="bl-arrow" id="bl-arrow"></div>
@@ -801,8 +805,17 @@ function copiarFeedback() {
 
 
 // ════ LETREIRO BACKLOG ════
-let blAnterior = null;
 const BL_URL = 'https://metabase.vammo.com/api/public/card/4c3e3148-e516-4261-a46e-244a414f3d79/query/json';
+
+const TICK_LABELS = {
+  total_backlog:    'BACKLOG TOTAL',
+  queue:            'FILA',
+  waiting_service:  'AG. ATENDIMENTO',
+  waiting_parts:    'AG. PEÇAS',
+  awaiting_inspection:'AG. INSPEÇÃO',
+  stored_bikes:     'ARMAZENADAS',
+  saldo:            'SALDO DO DIA',
+};
 
 function iniciarBacklog() {
   buscarBacklog();
@@ -810,34 +823,59 @@ function iniciarBacklog() {
 }
 
 function buscarBacklog() {
-  const numEl = document.getElementById('bl-num');
-  const timEl = document.getElementById('bl-time');
-  const arrEl = document.getElementById('bl-arrow');
-  const difEl = document.getElementById('bl-diff');
-  if (!numEl) return;
   call('backlog', {}, d => {
     if (d.error) {
-      if (numEl) { numEl.textContent = 'ERR'; numEl.style.opacity='1'; }
-      if (timEl) timEl.textContent = d.error;
+      document.getElementById('ticker-time').textContent = 'ERR: ' + d.error;
       return;
     }
-    const total = d.total;
-    numEl.style.opacity = '0';
-    setTimeout(() => {
-      numEl.textContent = total.toLocaleString('pt-BR');
-      numEl.style.opacity = '1';
-      if (blAnterior !== null && total !== blAnterior) {
-        const diff = total - blAnterior, pct = Math.abs(Math.round(diff/blAnterior*100)), subiu = diff > 0;
-        numEl.className = 'bl-num ' + (subiu?'up':'down');
-        if (arrEl) arrEl.textContent = subiu ? '▲' : '▼';
-        if (difEl) { difEl.textContent = (subiu?'+':'') + diff + ' (' + pct + '%)'; difEl.className = 'bl-diff '+(subiu?'up':'down'); }
-        setTimeout(() => { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }, 8000);
-      } else { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }
-      blAnterior = total;
-      if (timEl) timEl.textContent = d.atualizadoEm || new Date().toLocaleTimeString('pt-BR');
-    }, 150);
+    const prev  = blDados;
+    blDados = d;
+    renderTicker(d, prev);
+    const t = document.getElementById('ticker-time');
+    if (t) t.textContent = new Date().toLocaleTimeString('pt-BR');
   });
 }
+
+function renderTicker(d, prev) {
+  const track = document.getElementById('ticker-track');
+  if (!track) return;
+
+  const campos = ['total_backlog','queue','waiting_service','waiting_parts',
+                  'awaiting_inspection','stored_bikes','saldo'];
+
+  const items = campos.map(k => {
+    const val  = d[k] ?? 0;
+    const pval = prev ? (prev[k] ?? val) : val;
+    const diff = val - pval;
+    const pct  = pval !== 0 ? Math.abs(Math.round(diff / pval * 100)) : 0;
+    const dir  = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+    const arrow= diff > 0 ? '▲' : diff < 0 ? '▼' : '';
+    const chgTxt = diff !== 0
+      ? `${arrow} ${Math.abs(diff)} (${pct}%)`
+      : (prev ? '—' : '');
+
+    // saldo: positivo = bom (verde), negativo = ruim (vermelho)
+    const cls = k === 'saldo'
+      ? (val >= 0 ? '' : 'danger')
+      : (val > 500 ? 'danger' : val > 350 ? 'warn' : '');
+
+    return `<div class="tick-item ${cls}">
+      <span class="tick-label">${TICK_LABELS[k]}</span>
+      <span class="tick-val">${val.toLocaleString('pt-BR')}</span>
+      ${chgTxt ? `<span class="tick-chg ${dir}">${chgTxt}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  // Duplica pra scroll infinito ficar suave
+  track.innerHTML = items + items;
+
+  // Ajusta velocidade pelo número de itens
+  const track_el = track;
+  const total_w = track_el.scrollWidth / 2;
+  const speed = Math.max(20, total_w / 60);
+  track_el.style.animationDuration = speed + 's';
+}
+
 
 
 

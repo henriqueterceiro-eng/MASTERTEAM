@@ -846,6 +846,7 @@ function init() {
   const today = new Date();
   document.getElementById('inp-data').value = fmtIn(today);
   updateSbDate(today);
+  iniciarBacklog();
 
   // Load turnos first then supervisores
   call('turnos', {}, d => {

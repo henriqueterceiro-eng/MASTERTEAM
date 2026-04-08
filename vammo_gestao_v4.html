@@ -643,25 +643,22 @@ function iniciarBacklog() {
   setInterval(buscarBacklog, 60000);
 }
 
-async function buscarBacklog() {
+function buscarBacklog() {
   const numEl = document.getElementById('bl-num');
   const timEl = document.getElementById('bl-time');
   const arrEl = document.getElementById('bl-arrow');
   const difEl = document.getElementById('bl-diff');
   if (!numEl) return;
-  try {
-    const res  = await fetch(BL_URL);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    let total  = null;
-    if (Array.isArray(data) && data.length > 0) {
-      const row   = data[0];
-      const chave = Object.keys(row).find(k => k.toLowerCase().includes('backlog') || k.toLowerCase().includes('total'));
-      total = chave ? Number(row[chave]) : Number(Object.values(row)[0]);
-    } else if (data && data.data && data.data.rows) {
-      total = Number(data.data.rows[0][0]);
+  if (timEl) timEl.textContent = 'buscando...';
+
+  call('backlog', {}, d => {
+    if (d.error) {
+      if (numEl) { numEl.textContent = 'ERR'; numEl.style.opacity='1'; }
+      if (timEl) timEl.textContent = d.error + (d.debug ? ' | ' + d.debug : '');
+      console.warn('Backlog error:', d);
+      return;
     }
-    if (total === null || isNaN(total)) throw new Error('Formato: ' + JSON.stringify(data).substring(0,80));
+    const total = d.total;
     numEl.style.opacity = '0';
     setTimeout(() => {
       numEl.textContent = total.toLocaleString('pt-BR');
@@ -674,13 +671,9 @@ async function buscarBacklog() {
         setTimeout(() => { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }, 8000);
       } else { numEl.className='bl-num'; if(arrEl)arrEl.textContent=''; if(difEl)difEl.textContent=''; }
       blAnterior = total;
-      if (timEl) timEl.textContent = new Date().toLocaleTimeString('pt-BR');
+      if (timEl) timEl.textContent = d.atualizadoEm || new Date().toLocaleTimeString('pt-BR');
     }, 150);
-  } catch(err) {
-    console.warn('Backlog err:', err.message);
-    if (numEl) { numEl.textContent = '?'; numEl.style.opacity='1'; }
-    if (timEl) timEl.textContent = 'erro: ' + err.message;
-  }
+  });
 }
 
 function init() {

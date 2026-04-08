@@ -208,36 +208,31 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 .toast{position:fixed;bottom:18px;right:24px;background:var(--text);color:#fff;padding:9px 20px;border-radius:10px;font-size:12px;z-index:400;opacity:0;transition:all .25s;transform:translateY(8px);pointer-events:none;box-shadow:var(--shadow-md);}
 .toast.show{opacity:1;transform:translateY(0);}
 
-/* ── LETREIRO BACKLOG ─────────────────── */
-.backlog-bar{display:flex;align-items:center;justify-content:center;gap:16px;background:#0D1B2A;border-bottom:2px solid #1a2e45;padding:0 24px;height:44px;flex-shrink:0;font-family:'Barlow Condensed',sans-serif;}
-.bl-label{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#4a6a8a;font-weight:700;}
-.bl-num{font-size:28px;font-weight:900;letter-spacing:3px;color:#2EC2FF;text-shadow:0 0 18px rgba(46,194,255,.5);transition:color .4s,text-shadow .4s,opacity .3s;font-variant-numeric:tabular-nums;}
-.bl-num.up{color:#F23557;text-shadow:0 0 18px rgba(242,53,87,.55);}
-.bl-num.down{color:#00C853;text-shadow:0 0 18px rgba(0,200,83,.55);}
-.bl-arrow{font-size:20px;transition:all .4s;}
-.bl-diff{font-size:13px;font-weight:700;letter-spacing:1px;transition:color .4s;}
-.bl-diff.up{color:#F23557;}
-.bl-diff.down{color:#00C853;}
-.bl-time{font-size:10px;color:#2a4a6a;letter-spacing:1px;margin-left:8px;}
-.bl-dot{width:7px;height:7px;border-radius:50%;background:#2EC2FF;box-shadow:0 0 8px #2EC2FF;animation:pulse-dot 1.5s infinite;}
-@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+/* ── TICKER BOLSA ─────────────────────────────── */
+.backlog-bar{height:56px;background:#000;border-bottom:2px solid #0a2a0a;overflow:hidden;position:relative;display:flex;align-items:center;flex-shrink:0;}
+.ticker-track{display:flex;align-items:center;white-space:nowrap;animation:ticker-scroll 35s linear infinite;gap:0;}
+.backlog-bar:hover .ticker-track{animation-play-state:paused;}
+@keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+.tick-item{display:inline-flex;align-items:center;gap:10px;padding:0 28px;border-right:1px solid #0a2a0a;font-family:'Barlow Condensed','Courier New',monospace;}
+.tick-label{font-size:12px;font-weight:400;letter-spacing:2px;color:#3a6a3a;text-transform:uppercase;}
+.tick-val{font-size:26px;font-weight:900;letter-spacing:2px;color:#00FF41;text-shadow:0 0 14px rgba(0,255,65,.7);font-variant-numeric:tabular-nums;}
+.tick-item.danger .tick-val{color:#FF3131;text-shadow:0 0 14px rgba(255,49,49,.7);}
+.tick-item.warn .tick-val{color:#FFD700;text-shadow:0 0 14px rgba(255,215,0,.6);}
+.tick-chg{font-size:13px;font-weight:800;padding:2px 8px;border-radius:3px;letter-spacing:1px;}
+.tick-chg.up{background:#FF3131;color:#fff;}
+.tick-chg.down{background:#00C853;color:#000;}
+.tick-chg.flat{color:#3a6a3a;}
+.ticker-time{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:#1a4a1a;font-family:monospace;z-index:2;pointer-events:none;}
 
 </style>
 </head>
 <body>
 
-<!-- LETREIRO BACKLOG -->
+<!-- TICKER BOLSA -->
 <div class="backlog-bar" id="backlog-bar">
-  <div class="ticker-track" id="ticker-track">
-    <!-- preenchido pelo JS -->
-  </div>
+  <div class="ticker-track" id="ticker-track"></div>
   <span class="ticker-time" id="ticker-time">--:--:--</span>
 </div>
-  <div class="bl-label">BACKLOG TOTAL</div>
-  <div class="bl-num" id="bl-num">—</div>
-  <div class="bl-arrow" id="bl-arrow"></div>
-  <div class="bl-diff" id="bl-diff"></div>
-  <div class="bl-time" id="bl-time">atualizando...</div>
 </div>
 
 <div class="hd">

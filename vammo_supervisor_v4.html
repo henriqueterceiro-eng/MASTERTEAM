@@ -881,39 +881,7 @@ function buscarDashboard() {
 }
 
 
-function renderTicker(d, prevLocal) {
-  const track = document.getElementById('ticker-track');
-  if (!track) return;
 
-  // Usa prev do backend (ontem) se disponível, senão usa o snapshot anterior local
-  const prev = d.prev || prevLocal;
-
-  const campos = ['total_backlog'];
-
-  const items = campos.map(k => {
-    const val  = d[k] ?? 0;
-    const pval = prev ? (prev[k] ?? val) : val;
-    const diff = val - pval;
-    const pct  = pval !== 0 ? Math.abs(Math.round(diff / pval * 100)) : 0;
-    const dir  = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
-    const arrow= diff > 0 ? '\u25b2' : diff < 0 ? '\u25bc' : '';
-    const chgTxt = diff !== 0 ? `${arrow} ${Math.abs(diff)} (${pct}%)` : '';
-
-    const cls = k === 'saldo'
-      ? (val >= 0 ? '' : 'danger')
-      : (val > 500 ? 'danger' : val > 350 ? 'warn' : '');
-
-    return `<div class="tick-item ${cls}">
-      <span class="tick-label">${TICK_LABELS[k]}</span>
-      <span class="tick-val">${val.toLocaleString('pt-BR')}</span>
-      ${chgTxt ? `<span class="tick-chg ${dir}">${chgTxt}</span>` : ''}
-    </div>`;
-  }).join('');
-
-  track.innerHTML = items + items;
-  const speed = Math.max(20, track.scrollWidth / 2 / 60);
-  track.style.animationDuration = speed + 's';
-}
 
 
 

@@ -201,7 +201,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 .backlog-bar:hover .ticker-track{animation-play-state:paused;}
 @keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
 .tick-item{display:inline-flex;align-items:center;gap:8px;padding:0 24px;border-right:2px solid #003300;font-family:'Courier New',Courier,monospace;}
-.tick-label{font-size:11px;font-weight:700;letter-spacing:2px;color:#00CC00;text-transform:uppercase;}
+.tick-label{font-size:11px;font-weight:700;letter-spacing:2px;color:#AAAAAA;text-transform:uppercase;}
 .tick-val{font-size:28px;font-weight:900;color:#00FF00;text-shadow:0 0 10px #00FF00,0 0 20px #00AA00;font-variant-numeric:tabular-nums;letter-spacing:2px;}
 .tick-item.danger .tick-val{color:#FF2222;text-shadow:0 0 10px #FF2222,0 0 20px #AA0000;}
 .tick-item.warn .tick-val{color:#FFCC00;text-shadow:0 0 10px #FFCC00,0 0 20px #AA8800;}
@@ -843,9 +843,12 @@ function buscarBacklog() {
   });
 }
 
-function renderTicker(d, prev) {
+function renderTicker(d, prevLocal) {
   const track = document.getElementById('ticker-track');
   if (!track) return;
+
+  // Usa prev do backend (ontem) se disponível, senão usa o snapshot anterior local
+  const prev = d.prev || prevLocal;
 
   const campos = ['total_backlog','queue','waiting_service','waiting_parts',
                   'awaiting_inspection','stored_bikes','saldo'];
@@ -856,12 +859,9 @@ function renderTicker(d, prev) {
     const diff = val - pval;
     const pct  = pval !== 0 ? Math.abs(Math.round(diff / pval * 100)) : 0;
     const dir  = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
-    const arrow= diff > 0 ? '▲' : diff < 0 ? '▼' : '';
-    const chgTxt = diff !== 0
-      ? `${arrow} ${Math.abs(diff)} (${pct}%)`
-      : (prev ? '—' : '');
+    const arrow= diff > 0 ? '\u25b2' : diff < 0 ? '\u25bc' : '';
+    const chgTxt = diff !== 0 ? `${arrow} ${Math.abs(diff)} (${pct}%)` : '';
 
-    // saldo: positivo = bom (verde), negativo = ruim (vermelho)
     const cls = k === 'saldo'
       ? (val >= 0 ? '' : 'danger')
       : (val > 500 ? 'danger' : val > 350 ? 'warn' : '');
@@ -873,15 +873,11 @@ function renderTicker(d, prev) {
     </div>`;
   }).join('');
 
-  // Duplica pra scroll infinito ficar suave
   track.innerHTML = items + items;
-
-  // Ajusta velocidade pelo número de itens
-  const track_el = track;
-  const total_w = track_el.scrollWidth / 2;
-  const speed = Math.max(20, total_w / 60);
-  track_el.style.animationDuration = speed + 's';
+  const speed = Math.max(20, track.scrollWidth / 2 / 60);
+  track.style.animationDuration = speed + 's';
 }
+
 
 
 

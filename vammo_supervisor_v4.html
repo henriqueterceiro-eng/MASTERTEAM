@@ -868,7 +868,7 @@ function iniciarDashboard() {
 }
 
 function buscarDashboard() {
-  call('dashboard', {}, d => {
+  call('metabase', {}, d => {
     if (d.error) {
       const t = document.getElementById('ticker-time');
       if (t) t.textContent = 'ERR: ' + d.error;

@@ -214,7 +214,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 .backlog-bar:hover .ticker-track{animation-play-state:paused;}
 @keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
 .tick-item{display:inline-flex;align-items:center;gap:8px;padding:0 24px;border-right:2px solid #003300;font-family:'Courier New',Courier,monospace;}
-.tick-label{font-size:11px;font-weight:700;letter-spacing:2px;color:#AAAAAA;text-transform:uppercase;}
+.tick-label{font-size:11px;font-weight:700;letter-spacing:2px;color:#FFFFFF;text-transform:uppercase;}
 .tick-val{font-size:28px;font-weight:900;color:#00FF00;text-shadow:0 0 10px #00FF00,0 0 20px #00AA00;font-variant-numeric:tabular-nums;letter-spacing:2px;}
 .tick-item.danger .tick-val{color:#FF2222;text-shadow:0 0 10px #FF2222,0 0 20px #AA0000;}
 .tick-item.warn .tick-val{color:#FFCC00;text-shadow:0 0 10px #FFCC00,0 0 20px #AA8800;}
@@ -573,6 +573,10 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
       <div class="form-l">Nome completo</div>
       <input type="text" id="col-nome" placeholder="Ex: João da Silva" autocomplete="off">
     </div>
+    <div class="form-r">
+      <div class="form-l">E-mail</div>
+      <input type="email" id="col-email" placeholder="Ex: joao@vammo.com.br" autocomplete="off">
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="form-r">
         <div class="form-l">Turno</div>
@@ -601,7 +605,6 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
         <option value="Mec 3">Mec 3</option>
       </select>
     </div>
-    <!-- aviso migração -->
     <div id="col-migracao-aviso" style="display:none;margin-top:8px;padding:8px 12px;background:var(--yellow-d);border:1px solid rgba(245,184,0,.3);border-radius:8px;font-size:11px;color:var(--orange);">
       ⚠️ Você está alterando o turno deste colaborador. O histórico de presenças anteriores não será alterado.
     </div>
@@ -609,6 +612,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
     <input type="hidden" id="col-turno-orig">
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-col')">Cancelar</button>
+      <button class="btn btn-red" id="btn-excluir-col" style="display:none;" onclick="excluirCol()">🗑️ Excluir</button>
       <button class="btn btn-blue" id="btn-salvar-col" onclick="salvarCol()">💾 Salvar</button>
     </div>
   </div>
@@ -636,7 +640,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyi0ktdQ5Xd8PJcnZEezxX-kaeUUMQHcXiEbp6ihDZn0zRUeeqz4naPtQRs5KQlOO7f/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHgs2jJ72TB5cRlsNQLvDisER8fntiF_foO-45qvrYOEvPN6Gegkm3pQtJF9el-yHH/exec';
 let blDados = null;
 
 let sups=[], allCols=[], teamData=[], selSup=null;
@@ -684,8 +688,7 @@ function renderTicker(d, prevLocal) {
   // Usa prev do backend (ontem) se disponível, senão usa o snapshot anterior local
   const prev = d.prev || prevLocal;
 
-  const campos = ['total_backlog','queue','waiting_service','waiting_parts',
-                  'awaiting_inspection','stored_bikes','saldo'];
+  const campos = ['total_backlog'];
 
   const items = campos.map(k => {
     const val  = d[k] ?? 0;
@@ -1266,6 +1269,8 @@ function abrirNovoCol() {
     populateColTurnoModal();
     document.getElementById('modal-col-title').textContent = 'NOVO COLABORADOR';
     document.getElementById('col-nome').value  = '';
+    document.getElementById('col-email').value = '';
+    document.getElementById('btn-excluir-col').style.display = 'none';
     document.getElementById('col-orig').value  = '';
     document.getElementById('col-turno-orig').value = '';
     document.getElementById('col-migracao-aviso').style.display = 'none';
@@ -1294,9 +1299,11 @@ function editCol(ne) {
 
   document.getElementById('modal-col-title').textContent = 'EDITAR COLABORADOR';
   document.getElementById('col-nome').value      = emp.nome;
+  document.getElementById('col-email').value     = emp.email || '';
   document.getElementById('col-setor').value     = emp.setor;
   document.getElementById('col-orig').value      = emp.nome;
   document.getElementById('col-turno-orig').value = emp.turno;
+  document.getElementById('btn-excluir-col').style.display = '';
   document.getElementById('col-migracao-aviso').style.display = 'none';
   // Nivel
   const nivSel = document.getElementById('col-nivel');
@@ -1326,6 +1333,7 @@ function editCol(ne) {
 
 function salvarCol() {
   const nome  = document.getElementById('col-nome').value.trim();
+  const email = document.getElementById('col-email').value.trim();
   const turno = document.getElementById('col-turno').value;
   const setor = document.getElementById('col-setor').value;
   const nivel = document.getElementById('col-nivel')?.value || '';
@@ -1336,16 +1344,31 @@ function salvarCol() {
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
   const isEdit = !!orig;
   const params = isEdit
-    ? { nome, turno, setor, nivel, nomeOriginal: orig }
-    : { nome, turno, setor, nivel };
+    ? { nome, email, turno, setor, nivel, nomeOriginal: orig }
+    : { nome, email, turno, setor, nivel };
   call(isEdit ? 'editCol' : 'addCol', params, d => {
     btn.disabled = false; btn.textContent = '💾 Salvar';
     if (d.error) { toast('❌ ' + d.error); return; }
     closeModal('modal-col');
-    loadCols();
+    setTimeout(() => loadCols(), 800);
     toast(isEdit ? '✅ ' + nome + ' atualizado!' : '✅ ' + nome + ' cadastrado!');
   });
 }
+function excluirCol() {
+  const nome = document.getElementById('col-orig').value;
+  if (!nome) return;
+  if (!confirm('Tem certeza que deseja EXCLUIR o colaborador ' + nome + '?\nEssa ação não pode ser desfeita!')) return;
+  const btn = document.getElementById('btn-excluir-col');
+  btn.disabled = true; btn.textContent = '⏳ Excluindo...';
+  call('deleteCol', { nome }, d => {
+    btn.disabled = false; btn.textContent = '🗑️ Excluir';
+    if (d.error) { toast('❌ ' + d.error); return; }
+    closeModal('modal-col');
+    setTimeout(() => loadCols(), 800);
+    toast('🗑️ ' + nome + ' excluído!');
+  });
+}
+
 function toggleColSt(ne, st) {
   const nome  = dec(ne);
   const novoSt = st === 'Ativo' ? 'false' : 'true';

@@ -201,7 +201,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 .backlog-bar:hover .ticker-track{animation-play-state:paused;}
 @keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
 .tick-item{display:inline-flex;align-items:center;gap:8px;padding:0 24px;border-right:2px solid #003300;font-family:'Courier New',Courier,monospace;}
-.tick-label{font-size:11px;font-weight:700;letter-spacing:2px;color:#AAAAAA;text-transform:uppercase;}
+.tick-label{font-size:11px;font-weight:700;letter-spacing:2px;color:#FFFFFF;text-transform:uppercase;}
 .tick-val{font-size:28px;font-weight:900;color:#00FF00;text-shadow:0 0 10px #00FF00,0 0 20px #00AA00;font-variant-numeric:tabular-nums;letter-spacing:2px;}
 .tick-item.danger .tick-val{color:#FF2222;text-shadow:0 0 10px #FF2222,0 0 20px #AA0000;}
 .tick-item.warn .tick-val{color:#FFCC00;text-shadow:0 0 10px #FFCC00,0 0 20px #AA8800;}
@@ -438,7 +438,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyi0ktdQ5Xd8PJcnZEezxX-kaeUUMQHcXiEbp6ihDZn0zRUeeqz4naPtQRs5KQlOO7f/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHgs2jJ72TB5cRlsNQLvDisER8fntiF_foO-45qvrYOEvPN6Gegkm3pQtJF9el-yHH/exec';
 let blDados = null;
 
 const OCUPACOES = ['Rampa','Qualidade','Diagnóstico','Mesa','Driver','Serviço Especial'];
@@ -850,8 +850,7 @@ function renderTicker(d, prevLocal) {
   // Usa prev do backend (ontem) se disponível, senão usa o snapshot anterior local
   const prev = d.prev || prevLocal;
 
-  const campos = ['total_backlog','queue','waiting_service','waiting_parts',
-                  'awaiting_inspection','stored_bikes','saldo'];
+  const campos = ['total_backlog'];
 
   const items = campos.map(k => {
     const val  = d[k] ?? 0;

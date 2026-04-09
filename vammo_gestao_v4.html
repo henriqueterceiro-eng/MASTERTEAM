@@ -209,9 +209,20 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 .toast.show{opacity:1;transform:translateY(0);}
 
 /* ── TICKER BOLSA ─────────────────────────────── */
-.backlog-bar{height:56px;background:#000;border-bottom:2px solid #0a2a0a;overflow:hidden;position:relative;display:flex;align-items:center;flex-shrink:0;}
-.ticker-track{display:flex;align-items:center;white-space:nowrap;animation:ticker-scroll 35s linear infinite;gap:0;}
+.backlog-bar{height:52px;background:#000;border-bottom:3px solid #003300;overflow:hidden;position:relative;display:flex;align-items:center;flex-shrink:0;}
+.ticker-track{display:flex;align-items:center;white-space:nowrap;animation:ticker-scroll 40s linear infinite;gap:0;}
 .backlog-bar:hover .ticker-track{animation-play-state:paused;}
+@keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+.tick-item{display:inline-flex;align-items:center;gap:8px;padding:0 24px;border-right:2px solid #003300;font-family:'Courier New',Courier,monospace;}
+.tick-label{font-size:11px;font-weight:700;letter-spacing:2px;color:#00CC00;text-transform:uppercase;}
+.tick-val{font-size:28px;font-weight:900;color:#00FF00;text-shadow:0 0 10px #00FF00,0 0 20px #00AA00;font-variant-numeric:tabular-nums;letter-spacing:2px;}
+.tick-item.danger .tick-val{color:#FF2222;text-shadow:0 0 10px #FF2222,0 0 20px #AA0000;}
+.tick-item.warn .tick-val{color:#FFCC00;text-shadow:0 0 10px #FFCC00,0 0 20px #AA8800;}
+.tick-chg{font-size:13px;font-weight:900;padding:2px 7px;border-radius:2px;letter-spacing:1px;font-family:'Courier New',monospace;}
+.tick-chg.up{background:#CC0000;color:#FFFFFF;}
+.tick-chg.down{background:#007700;color:#FFFFFF;}
+.tick-chg.flat{color:#005500;}
+.ticker-time{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:#005500;font-family:'Courier New',monospace;z-index:2;pointer-events:none;letter-spacing:1px;}
 @keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
 .tick-item{display:inline-flex;align-items:center;gap:10px;padding:0 28px;border-right:1px solid #0a2a0a;font-family:'Barlow Condensed','Courier New',monospace;}
 .tick-label{font-size:12px;font-weight:400;letter-spacing:2px;color:#3a6a3a;text-transform:uppercase;}

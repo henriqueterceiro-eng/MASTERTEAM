@@ -222,6 +222,8 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 .tick-chg.up{background:#CC0000;color:#FFFFFF;}
 .tick-chg.down{background:#007700;color:#FFFFFF;}
 .tick-chg.flat{color:#005500;}
+.tick-secao{display:inline-flex;align-items:center;padding:0 16px;border-right:2px solid #003300;height:100%;}
+.tick-secao-label{font-family:'Courier New',monospace;font-size:11px;font-weight:900;letter-spacing:3px;color:#005500;text-transform:uppercase;}
 .ticker-time{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:#005500;font-family:'Courier New',monospace;z-index:2;pointer-events:none;letter-spacing:1px;}
 @keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
 .tick-item{display:inline-flex;align-items:center;gap:10px;padding:0 28px;border-right:1px solid #0a2a0a;font-family:'Barlow Condensed','Courier New',monospace;}
@@ -233,6 +235,8 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 .tick-chg.up{background:#FF3131;color:#fff;}
 .tick-chg.down{background:#00C853;color:#000;}
 .tick-chg.flat{color:#3a6a3a;}
+.tick-secao{display:inline-flex;align-items:center;padding:0 16px;border-right:2px solid #003300;height:100%;}
+.tick-secao-label{font-family:'Courier New',monospace;font-size:11px;font-weight:900;letter-spacing:3px;color:#005500;text-transform:uppercase;}
 .ticker-time{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:#1a4a1a;font-family:monospace;z-index:2;pointer-events:none;}
 
 </style>
@@ -640,7 +644,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHgs2jJ72TB5cRlsNQLvDisER8fntiF_foO-45qvrYOEvPN6Gegkm3pQtJF9el-yHH/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzuOXurRxPl9RgxeBGCvZxTUQVTzl2J7a1TeBqoZF76Bm8r-H1a4PUAK6eplojdYzm/exec';
 let blDados = null;
 
 let sups=[], allCols=[], teamData=[], selSup=null;
@@ -651,35 +655,69 @@ let dashData=null, extData=null, bonData=null;
 // ════ LETREIRO BACKLOG ════
 const BL_URL = 'https://metabase.vammo.com/api/public/card/4c3e3148-e516-4261-a46e-244a414f3d79/query/json';
 
-const TICK_LABELS = {
-  total_backlog:    'BACKLOG TOTAL',
-  queue:            'FILA',
-  waiting_service:  'AG. ATENDIMENTO',
-  waiting_parts:    'AG. PEÇAS',
-  awaiting_inspection:'AG. INSPEÇÃO',
-  stored_bikes:     'ARMAZENADAS',
-  saldo:            'SALDO DO DIA',
+const SECAO_CORES = {
+  DIA:    { label: '#FFFFFF', val: '#00FF00', bg: '#001100' },
+  SEMANA: { label: '#FFFFFF', val: '#00CCFF', bg: '#001122' },
+  TURNOS: { label: '#FFFFFF', val: '#FFCC00', bg: '#111100' },
 };
 
-function iniciarBacklog() {
-  buscarBacklog();
-  setInterval(buscarBacklog, 60000);
+function renderTicker(d) {
+  const track = document.getElementById('ticker-track');
+  if (!track) return;
+
+  const cards = d.cards || {};
+  const ordem = ['DIA','SEMANA','TURNOS'];
+  let items = '';
+
+  ordem.forEach(secao => {
+    const cor = SECAO_CORES[secao];
+    // Separador de seção
+    items += `<div class="tick-secao" style="background:${cor.bg};">
+      <span class="tick-secao-label">${secao}</span>
+    </div>`;
+    // Cards desta seção
+    Object.values(cards).filter(c => c.secao === secao).forEach(c => {
+      const val = c.val;
+      const fmt = val === null ? '—'
+        : (typeof val === 'number' && val % 1 !== 0)
+          ? (val * 100).toFixed(1) + '%'
+          : Number(val).toLocaleString('pt-BR');
+
+      const neg = typeof val === 'number' && c.label.toLowerCase().includes('saldo') && val < 0;
+      const pos = typeof val === 'number' && c.label.toLowerCase().includes('saldo') && val >= 0;
+
+      items += `<div class="tick-item">
+        <span class="tick-label" style="color:${cor.label};">${c.label}</span>
+        <span class="tick-val" style="color:${neg?'#FF3333':pos?'#00FF00':cor.val};
+          text-shadow:0 0 10px ${neg?'#FF3333':pos?'#00FF00':cor.val};">${fmt}</span>
+      </div>`;
+    });
+  });
+
+  // Duplica pra loop infinito
+  track.innerHTML = items + items;
+  const speed = Math.max(25, track.scrollWidth / 2 / 80);
+  track.style.animationDuration = speed + 's';
 }
 
-function buscarBacklog() {
-  if (typeof blDados === 'undefined') window.blDados = null;
-  call('backlog', {}, d => {
+function iniciarDashboard() {
+  buscarDashboard();
+  setInterval(buscarDashboard, 90000);
+}
+
+function buscarDashboard() {
+  call('dashboard', {}, d => {
     if (d.error) {
-      document.getElementById('ticker-time').textContent = 'ERR: ' + d.error;
+      const t = document.getElementById('ticker-time');
+      if (t) t.textContent = 'ERR: ' + d.error;
       return;
     }
-    const prev  = blDados;
-    blDados = d;
-    renderTicker(d, prev);
+    renderTicker(d);
     const t = document.getElementById('ticker-time');
-    if (t) t.textContent = new Date().toLocaleTimeString('pt-BR');
+    if (t) t.textContent = d.atualizadoEm || new Date().toLocaleTimeString('pt-BR');
   });
 }
+
 
 function renderTicker(d, prevLocal) {
   const track = document.getElementById('ticker-track');
@@ -723,7 +761,7 @@ function init() {
   setPreset('ext',15,document.querySelector('#page-ext .preset.active'));
   setPreset('bon',15,document.querySelector('#page-bonus .preset.active'));
   document.getElementById('dash-data').value = fmtIn(new Date());
-  iniciarBacklog();
+  iniciarDashboard();
 
   call('supervisores',{},d=>{
     sups = d.supervisores || []; // [{nome, turno}]

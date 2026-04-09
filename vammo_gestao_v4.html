@@ -724,15 +724,24 @@ function iniciarDashboard() {
 }
 
 function buscarDashboard() {
-  call('metabase', {}, d => {
-    if (d.error) {
-      const t = document.getElementById('ticker-time');
-      if (t) t.textContent = 'ERR: ' + d.error;
-      return;
+  let dashData = null, blData = null;
+  const tryRender = () => {
+    if (!dashData || !blData) return;
+    if (blData.total_backlog !== undefined) {
+      const prev = blData.prev ? blData.prev.total_backlog : null;
+      dashData.cards._backlog = { val: blData.total_backlog, prev, label: 'BACKLOG TOTAL', secao: 'BACKLOG' };
     }
-    renderTicker(d);
+    renderTicker(dashData);
     const t = document.getElementById('ticker-time');
-    if (t) t.textContent = d.atualizadoEm || new Date().toLocaleTimeString('pt-BR');
+    if (t) t.textContent = dashData.atualizadoEm || new Date().toLocaleTimeString('pt-BR');
+  };
+  call('metabase', {}, d => {
+    if (d.error) { const t = document.getElementById('ticker-time'); if (t) t.textContent = 'ERR: ' + d.error; return; }
+    dashData = d; tryRender();
+  });
+  call('backlog', {}, d => {
+    if (!d.error) { blData = d; } else { blData = {}; }
+    tryRender();
   });
 }
 

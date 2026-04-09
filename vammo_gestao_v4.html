@@ -652,6 +652,7 @@ function iniciarBacklog() {
 }
 
 function buscarBacklog() {
+  if (typeof blDados === 'undefined') window.blDados = null;
   call('backlog', {}, d => {
     if (d.error) {
       document.getElementById('ticker-time').textContent = 'ERR: ' + d.error;

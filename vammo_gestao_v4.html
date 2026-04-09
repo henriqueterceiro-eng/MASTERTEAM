@@ -656,45 +656,63 @@ let dashData=null, extData=null, bonData=null;
 const BL_URL = 'https://metabase.vammo.com/api/public/card/4c3e3148-e516-4261-a46e-244a414f3d79/query/json';
 
 const SECAO_CORES = {
+  BACKLOG:{ label: '#FFFFFF', val: '#2EC2FF', bg: '#001a22' },
   DIA:    { label: '#FFFFFF', val: '#00FF00', bg: '#001100' },
   SEMANA: { label: '#FFFFFF', val: '#00CCFF', bg: '#001122' },
   TURNOS: { label: '#FFFFFF', val: '#FFCC00', bg: '#111100' },
 };
+
+function fmtVal(val, label) {
+  if (val === null || val === undefined) return '—';
+  if (typeof val === 'number' && !Number.isInteger(val))
+    return (val * 100).toFixed(1) + '%';
+  return Number(val).toLocaleString('pt-BR');
+}
 
 function renderTicker(d) {
   const track = document.getElementById('ticker-track');
   if (!track) return;
 
   const cards = d.cards || {};
-  const ordem = ['DIA','SEMANA','TURNOS'];
   let items = '';
 
-  ordem.forEach(secao => {
+  // ── BACKLOG TOTAL em destaque ──
+  const bl = cards._backlog;
+  if (bl && bl.val !== null) {
+    const cor   = SECAO_CORES.BACKLOG;
+    const diff  = bl.prev !== null ? bl.val - bl.prev : null;
+    const pct   = (diff !== null && bl.prev) ? Math.abs(Math.round(diff / bl.prev * 100)) : 0;
+    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '';
+    const chgCls= diff > 0 ? '#FF3333' : '#00CC44';
+    const chg   = diff !== null && diff !== 0
+      ? `<span style="font-size:13px;font-weight:900;padding:2px 8px;border-radius:3px;background:${chgCls};color:#fff;margin-left:4px;">${arrow} ${Math.abs(diff)} (${pct}%)</span>`
+      : '';
+
+    items += `<div class="tick-item" style="padding:0 32px;border-right:3px solid #005588;">
+      <span class="tick-label" style="color:${cor.label};font-size:13px;font-weight:900;letter-spacing:3px;">BACKLOG TOTAL</span>
+      <span class="tick-val" style="color:${cor.val};text-shadow:0 0 18px ${cor.val};font-size:32px;">${fmtVal(bl.val)}</span>
+      ${chg}
+    </div>`;
+  }
+
+  // ── Seções DIA / SEMANA / TURNOS ──
+  ['DIA','SEMANA','TURNOS'].forEach(secao => {
     const cor = SECAO_CORES[secao];
-    // Separador de seção
     items += `<div class="tick-secao" style="background:${cor.bg};">
       <span class="tick-secao-label">${secao}</span>
     </div>`;
-    // Cards desta seção
     Object.values(cards).filter(c => c.secao === secao).forEach(c => {
       const val = c.val;
-      const fmt = val === null ? '—'
-        : (typeof val === 'number' && val % 1 !== 0)
-          ? (val * 100).toFixed(1) + '%'
-          : Number(val).toLocaleString('pt-BR');
-
       const neg = typeof val === 'number' && c.label.toLowerCase().includes('saldo') && val < 0;
       const pos = typeof val === 'number' && c.label.toLowerCase().includes('saldo') && val >= 0;
-
+      const color = neg ? '#FF3333' : pos ? '#00FF00' : cor.val;
       items += `<div class="tick-item">
         <span class="tick-label" style="color:${cor.label};">${c.label}</span>
-        <span class="tick-val" style="color:${neg?'#FF3333':pos?'#00FF00':cor.val};
-          text-shadow:0 0 10px ${neg?'#FF3333':pos?'#00FF00':cor.val};">${fmt}</span>
+        <span class="tick-val" style="color:${color};text-shadow:0 0 10px ${color};">${fmtVal(val, c.label)}</span>
       </div>`;
     });
   });
 
-  // Duplica pra loop infinito
   track.innerHTML = items + items;
   const speed = Math.max(25, track.scrollWidth / 2 / 80);
   track.style.animationDuration = speed + 's';

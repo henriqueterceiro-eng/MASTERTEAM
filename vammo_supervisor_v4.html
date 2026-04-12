@@ -278,6 +278,21 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
       </div>
     </div>
 
+    <!-- PAINEL DE META -->
+    <div class="sb-sec" id="meta-panel" style="display:none;">
+      <div class="sb-lbl">🎯 Meta do dia</div>
+      <div style="background:var(--blue-d);border:1px solid var(--blue-b);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Pontuação do turno</div>
+        <div style="font-size:28px;font-weight:900;color:var(--blue);" id="meta-dia-val">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;" id="meta-dia-ref"></div>
+      </div>
+      <div style="margin-top:10px;background:var(--green-d);border:1px solid rgba(0,200,83,.3);border-radius:10px;padding:12px;text-align:center;" id="meta-rampa-box">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Por mecânico de Rampa</div>
+        <div style="font-size:24px;font-weight:900;color:var(--green);" id="meta-rampa-val">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;" id="meta-rampa-ref"></div>
+      </div>
+    </div>
+
     <div class="sb-sec">
       <div class="sb-lbl">Ocupações</div>
       <div class="ocup-list" id="ocup-list"><div style="font-size:11px;color:var(--muted)">—</div></div>
@@ -442,7 +457,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwV6tcvRdRmNelCfmuUhIn9cO29V8NElKZM6JJKe_kpNVkKKyU27DyqcSGmFuiuJXth/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTcoIjohWZC-lGzSNxUwtsyKpqas3thB9KBdwR2YdcGuUWzVO8amRaQWxEbRk0TKHq/exec';
 let blDados = null;
 
 const OCUPACOES = ['Rampa','Qualidade','Diagnóstico','Mesa','Driver','Serviço Especial'];
@@ -453,6 +468,7 @@ const DIAS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-fe
 
 let team = [], state = {}, turnoMap = {}, dirty = false;
 let periodoQueue = [], periodoIdx = 0, periodoCallback = null;
+let metaAtual = null; // { meta, escala, metaDiaria }
 
 // ════ TABS ════
 function goTab(tab, btn) {
@@ -945,6 +961,7 @@ function onSupChange() {
   if (sup) localStorage.setItem('vammo_sup_v4', sup);
   if (!sup) return;
   loadTeam();
+  carregarMetaSupervisor(sup);
 }
 function onDateChange() {
   const dv = document.getElementById('inp-data').value;
@@ -1142,6 +1159,7 @@ function updateStats(){
   el.innerHTML=entries.length
     ?entries.map(([o,n])=>`<div class="ocup-row"><span class="ocup-name">${o}</span><div class="ocup-bar-bg"><div class="ocup-bar" style="width:${Math.round(n/tot*100)}%"></div></div><span class="ocup-n">${n}</span></div>`).join('')
     :'<div style="font-size:11px;color:var(--muted)">Nenhuma registrada</div>';
+  atualizarMetaRampa();
 }
 
 async function salvar(){
@@ -1217,6 +1235,61 @@ let _tt;
 function toast(msg,dur=3500){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),dur);}
 
 init();
+
+// ══════════════════════════════════════════════════
+// METAS DE PRODUÇÃO — SUPERVISOR
+// ══════════════════════════════════════════════════
+
+function carregarMetaSupervisor(supNome) {
+  // Busca o turno do supervisor via lista de sups já carregada
+  // e depois pega a meta daquele turno
+  call('getMetas', {}, d => {
+    if (d.error || !d.metas) return;
+    // Descobre turno do supervisor selecionado
+    call('supervisores', {}, ds => {
+      const sups = ds.supervisores || [];
+      const supObj = sups.find(s => s.nome === supNome);
+      if (!supObj) return;
+      const turnoId = supObj.turno;
+      const m = d.metas[turnoId];
+      if (!m || !m.metaDiaria) {
+        document.getElementById('meta-panel').style.display = 'none';
+        metaAtual = null;
+        return;
+      }
+      metaAtual = { ...m, turnoId };
+      document.getElementById('meta-panel').style.display = '';
+      document.getElementById('meta-dia-val').textContent = m.metaDiaria + ' pts';
+      document.getElementById('meta-dia-ref').textContent =
+        'Meta semanal: ' + m.meta + ' pts ÷ ' + (m.escala === '5x2' ? 5 : 6) + ' dias';
+      atualizarMetaRampa();
+    });
+  });
+}
+
+function atualizarMetaRampa() {
+  if (!metaAtual) return;
+  // Conta mecânicos com ocupação Rampa e status presente/atraso
+  const COM_OCUP = ['Presente','Atraso +15min'];
+  let rampaCount = 0;
+  team.forEach(emp => {
+    const s = state[emp.nome];
+    if (s && COM_OCUP.includes(s.status) && s.ocupacao === 'Rampa') rampaCount++;
+  });
+
+  const boxRampa = document.getElementById('meta-rampa-box');
+  const valRampa = document.getElementById('meta-rampa-val');
+  const refRampa = document.getElementById('meta-rampa-ref');
+
+  if (rampaCount === 0) {
+    valRampa.textContent = '—';
+    refRampa.textContent = 'Nenhum mecânico na Rampa';
+  } else {
+    const ptsPorMec = Math.round(metaAtual.metaDiaria / rampaCount);
+    valRampa.textContent = ptsPorMec + ' pts';
+    refRampa.textContent = metaAtual.metaDiaria + ' pts ÷ ' + rampaCount + ' na Rampa';
+  }
+}
 </script>
 </body>
 </html>

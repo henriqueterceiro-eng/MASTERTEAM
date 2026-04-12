@@ -445,6 +445,10 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
         <div class="cfg-tab-n">🔧 Colaboradores</div>
         <div class="cfg-tab-s">Cadastro completo</div>
       </button>
+      <button class="cfg-tab" id="ct-metas" onclick="cfgTab('metas',this)">
+        <div class="cfg-tab-n">🎯 Metas</div>
+        <div class="cfg-tab-s">Produção por turno</div>
+      </button>
     </div>
 
     <!-- TURNOS -->
@@ -470,6 +474,22 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
       </div>
       <div style="flex:1;overflow-y:auto;padding:16px 20px;" id="sup-list-cfg">
         <div class="spinner" style="margin:40px auto;"></div>
+      </div>
+    </div>
+
+    <!-- METAS -->
+    <div class="cfg-content" id="cfg-metas">
+      <div class="panel-hd">
+        <div class="panel-title">🎯 Metas de Produção por Turno</div>
+      </div>
+      <div style="padding:16px 20px;flex:1;overflow-y:auto;">
+        <div style="background:var(--blue-d);border:1px solid var(--blue-b);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+          💡 Configure a meta semanal de pontuação para cada turno e a escala de trabalho.
+          O app calculará automaticamente a meta diária e a meta por mecânico de Rampa.
+        </div>
+        <div id="metas-list">
+          <div class="spinner" style="margin:40px auto;"></div>
+        </div>
       </div>
     </div>
 
@@ -644,7 +664,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwV6tcvRdRmNelCfmuUhIn9cO29V8NElKZM6JJKe_kpNVkKKyU27DyqcSGmFuiuJXth/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTcoIjohWZC-lGzSNxUwtsyKpqas3thB9KBdwR2YdcGuUWzVO8amRaQWxEbRk0TKHq/exec';
 let blDados = null;
 
 let sups=[], allCols=[], teamData=[], selSup=null;
@@ -809,6 +829,7 @@ function cfgTab(tab, btn){
   if (tab === 'cols')    loadCols();
   if (tab === 'sups')    loadCfgSups();
   if (tab === 'turnos')  loadTurnos();
+  if (tab === 'metas')   loadMetas();
 }
 
 // ════ PRESETS ════
@@ -1665,6 +1686,92 @@ function drawChart(semanas) {
 window.addEventListener('resize',()=>{if(chartData.length)drawChart(chartData);});
 
 init();
+
+// ══════════════════════════════════════════════════════
+// METAS DE PRODUÇÃO
+// ══════════════════════════════════════════════════════
+let metasData = {};
+
+function loadMetas() {
+  const div = document.getElementById('metas-list');
+  if (!div) return;
+  div.innerHTML = '<div class="spinner" style="margin:40px auto;"></div>';
+
+  // Carrega turnos e metas em paralelo
+  Promise.all([
+    new Promise(r => call('turnos', {}, d => r(d.turnos || []))),
+    new Promise(r => call('getMetas', {}, d => r(d.metas || {})))
+  ]).then(([turnos, metas]) => {
+    metasData = metas;
+    if (!turnos.length) {
+      div.innerHTML = '<div class="empty-st">Nenhum turno cadastrado</div>';
+      return;
+    }
+
+    const ESCALAS = [
+      { val: '6x1', label: '6×1 — Seg a Sáb (sáb. meio período)' },
+      { val: '5x2', label: '5×2 — Seg a Sex' },
+    ];
+
+    div.innerHTML = turnos.map(t => {
+      const m = metas[t.id] || { meta: 0, escala: '6x1' };
+      // 6x1: 5 dias cheios + sábado meio período = 5.5 dias equivalentes
+      const diasSemana = m.escala === '5x2' ? 5 : 5.5;
+      const metaDia = m.meta > 0 ? Math.round(m.meta / diasSemana) : 0;
+
+      return `<div style="background:var(--white);border:1px solid var(--b1);border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div>
+            <div style="font-weight:700;font-size:15px;">${t.nome}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Base: ${t.base || '—'}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:var(--muted);">Meta diária estimada</div>
+            <div style="font-size:24px;font-weight:900;color:var(--blue);" id="meta-dia-${t.id}">${metaDia > 0 ? metaDia + ' pts' : '—'}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;">META SEMANAL (pontos)</div>
+            <input type="number" id="meta-val-${t.id}" value="${m.meta || ''}" placeholder="Ex: 500"
+              min="0" style="width:100%;"
+              oninput="calcMetaDia('${t.id}')">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;">ESCALA</div>
+            <select id="meta-esc-${t.id}" style="width:100%;" onchange="calcMetaDia('${t.id}')">
+              ${ESCALAS.map(e => `<option value="${e.val}" ${m.escala===e.val?'selected':''}>${e.label}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;justify-content:flex-end;">
+          <button class="btn btn-blue btn-sm" onclick="salvarMeta('${t.id}')">💾 Salvar meta</button>
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function calcMetaDia(turnoId) {
+  const meta = Number(document.getElementById('meta-val-' + turnoId)?.value) || 0;
+  const esc  = document.getElementById('meta-esc-' + turnoId)?.value || '6x1';
+  // 6x1: 5 dias cheios + sábado meio período = 5.5 dias equivalentes
+  const dias = esc === '5x2' ? 5 : 5.5;
+  const dia  = meta > 0 ? Math.round(meta / dias) : 0;
+  const el   = document.getElementById('meta-dia-' + turnoId);
+  if (el) el.textContent = dia > 0 ? dia + ' pts' : '—';
+}
+
+function salvarMeta(turnoId) {
+  const meta = Number(document.getElementById('meta-val-' + turnoId)?.value) || 0;
+  const esc  = document.getElementById('meta-esc-' + turnoId)?.value || '6x1';
+  call('setMeta', { turnoId, meta, escala: esc }, d => {
+    if (d.error) { toast('❌ ' + d.error); return; }
+    metasData[turnoId] = { meta, escala: esc, metaDiaria: Math.round(meta / (esc === '5x2' ? 5 : 6)) };
+    toast('✅ Meta do turno salva!');
+  });
+}
+
 </script>
 </body>
 </html>

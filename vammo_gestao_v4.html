@@ -1496,7 +1496,12 @@ function exportCSV(type){
     filename='vammo_bonus.csv';
   }
   const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=filename;a.click();
+  const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
+  const a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
   toast('✅ CSV exportado!');
 }
 
@@ -1517,7 +1522,9 @@ function call(action,params,cb){
   const to=setTimeout(()=>{toast('❌ Timeout — URL correta?');delete window[cbName];sc.remove();},18000);
   window[cbName]=data=>{clearTimeout(to);delete window[cbName];sc.remove();cb(data);};
   sc.onerror=()=>{clearTimeout(to);toast('❌ Erro de conexão');delete window[cbName];sc.remove();};
-  sc.src=SCRIPT_URL+'?'+qs;document.head.appendChild(sc);
+  sc.async=true;
+  document.head.appendChild(sc);
+  sc.src=SCRIPT_URL+'?'+qs;
 }
 let _tt;
 function toast(msg,dur=3500){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),dur);}

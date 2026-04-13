@@ -395,6 +395,38 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
             <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Presença</div>
           </div>
         </div>
+
+        <!-- CARD DE PRODUÇÃO -->
+        <div id="fb-producao" style="display:none;margin-top:12px;background:var(--bg);border:1px solid var(--b1);border-radius:12px;padding:12px 16px;">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px;">📊 Produção (D-1 = ontem)</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+            <div style="text-align:center;background:var(--white);border:1px solid var(--b1);border-radius:8px;padding:8px;">
+              <div style="font-size:20px;font-weight:900;color:var(--blue);" id="fb-pts-d1">—</div>
+              <div style="font-size:10px;color:var(--muted);">Pts D-1</div>
+            </div>
+            <div style="text-align:center;background:var(--white);border:1px solid var(--b1);border-radius:8px;padding:8px;">
+              <div style="font-size:20px;font-weight:900;color:var(--blue);" id="fb-pts-sem">—</div>
+              <div style="font-size:10px;color:var(--muted);">Pts Semana</div>
+            </div>
+            <div style="text-align:center;background:var(--white);border:1px solid var(--b1);border-radius:8px;padding:8px;">
+              <div style="font-size:20px;font-weight:900;color:var(--blue);" id="fb-pts-mes">—</div>
+              <div style="font-size:10px;color:var(--muted);">Pts Mês</div>
+            </div>
+            <div style="text-align:center;background:var(--white);border:1px solid var(--b1);border-radius:8px;padding:8px;">
+              <div style="font-size:20px;font-weight:900;color:var(--green);" id="fb-motos-d1">—</div>
+              <div style="font-size:10px;color:var(--muted);">Motos D-1</div>
+            </div>
+            <div style="text-align:center;background:var(--white);border:1px solid var(--b1);border-radius:8px;padding:8px;">
+              <div style="font-size:20px;font-weight:900;color:var(--green);" id="fb-motos-sem">—</div>
+              <div style="font-size:10px;color:var(--muted);">Motos Semana</div>
+            </div>
+            <div style="text-align:center;background:var(--white);border:1px solid var(--b1);border-radius:8px;padding:8px;">
+              <div style="font-size:20px;font-weight:900;" id="fb-qa-pct" style="color:var(--green);">—</div>
+              <div style="font-size:10px;color:var(--muted);">% QA Semana</div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:10px;color:var(--muted);text-align:right;" id="fb-tenure">—</div>
+        </div>
       </div>
 
       <!-- Stats -->
@@ -407,7 +439,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
         <div class="fb-stat"><div class="fb-stat-n" id="fbs-tot" style="color:var(--blue)">0</div><div class="fb-stat-l">Total dias</div></div>
       </div>
 
-      <!-- GRÁFICO COMPARATIVO -->
+      <!-- GRÁFICO COMPARATIVO PRESENÇA -->
       <div id="fb-chart-area" style="display:none;background:var(--white);border-bottom:1px solid var(--b1);padding:12px 16px;flex-shrink:0;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;">Presença semanal vs grupo</div>
@@ -420,6 +452,24 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
           <canvas id="fb-chart" style="width:100%;height:100%;display:block;"></canvas>
           <div id="fb-chart-tip" style="display:none;position:absolute;background:var(--text);color:#fff;padding:6px 11px;border-radius:7px;font-size:11px;pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--shadow-md);"></div>
         </div>
+      </div>
+
+      <!-- GRÁFICO PRODUÇÃO vs MÉDIA DO NÍVEL -->
+      <div id="fb-prod-area" style="display:none;background:var(--white);border-bottom:1px solid var(--b1);padding:12px 16px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;">📊 Pontuação vs Média do Nível</div>
+          <div style="display:flex;gap:14px;font-size:11px;">
+            <span><span style="display:inline-block;width:12px;height:3px;background:var(--blue);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>Mecânico</span>
+            <span><span style="display:inline-block;width:12px;height:3px;background:#999;border-radius:2px;margin-right:4px;vertical-align:middle;"></span><span id="fb-nivel-label">Média Nível</span></span>
+          </div>
+        </div>
+        <div style="position:relative;height:130px;">
+          <canvas id="fb-prod-chart" style="width:100%;height:100%;display:block;"></canvas>
+          <div id="fb-prod-tip" style="display:none;position:absolute;background:var(--text);color:#fff;padding:6px 11px;border-radius:7px;font-size:11px;pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--shadow-md);"></div>
+        </div>
+
+        <!-- Cards de comparação -->
+        <div id="fb-comp-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;"></div>
       </div>
 
       <!-- Timeline -->
@@ -551,7 +601,10 @@ function fbPreset(dias, btn) {
 function onFbColChange() {
   document.getElementById('fb-box').style.display = 'none';
   document.getElementById('fb-texto').value = '';
-  if (document.getElementById('fb-colaborador').value) carregarHistorico();
+  if (document.getElementById('fb-colaborador').value) {
+    carregarHistorico();
+    carregarProducaoMecanico();
+  }
 }
 
 function carregarHistorico() {
@@ -565,6 +618,7 @@ function carregarHistorico() {
   document.getElementById('fb-col-header').style.display = 'none';
   document.getElementById('fb-stats').style.display = 'none';
   document.getElementById('fb-chart-area').style.display = 'none';
+  document.getElementById('fb-prod-area').style.display = 'none';
   document.getElementById('fb-box').style.display = 'none';
 
   const ds_ini = toDisp(ini), ds_fim = toDisp(fim);
@@ -1290,6 +1344,197 @@ function atualizarMetaRampa() {
     refRampa.textContent = metaAtual.metaDiaria + ' pts ÷ ' + rampaCount + ' na Rampa';
   }
 }
+
+// ══════════════════════════════════════════════════
+// PRODUÇÃO REAL — integração Metabase por email
+// ══════════════════════════════════════════════════
+let producaoCache = null;  // { porEmail: {...} }
+
+function carregarProducaoCache(cb) {
+  if (producaoCache) { cb(producaoCache); return; }
+  call('producao', {}, d => {
+    if (d.ok) producaoCache = d;
+    cb(producaoCache);
+  });
+}
+
+function carregarProducaoMecanico() {
+  const nomeSel = document.getElementById('fb-colaborador').value;
+  const emp = allCols.find(c => c.nome === nomeSel) || team.find(t => t.nome === nomeSel);
+  const email = emp?.email;
+  const nivel = emp?.nivel || '';
+  const box   = document.getElementById('fb-producao');
+  const area  = document.getElementById('fb-prod-area');
+
+  if (!email) {
+    if (box) box.style.display = 'none';
+    if (area) area.style.display = 'none';
+    return;
+  }
+
+  carregarProducaoCache(cache => {
+    if (!cache) { if (box) box.style.display = 'none'; if (area) area.style.display = 'none'; return; }
+    const p = cache.porEmail[email.toLowerCase()];
+    if (!p) { if (box) box.style.display = 'none'; if (area) area.style.display = 'none'; return; }
+
+    // ── Preenche cards simples ──
+    document.getElementById('fb-pts-d1').textContent    = p.pontuacao_d1;
+    document.getElementById('fb-pts-sem').textContent   = p.pontuacao_semana;
+    document.getElementById('fb-pts-mes').textContent   = p.pontuacao_mes;
+    document.getElementById('fb-motos-d1').textContent  = p.motos_d1;
+    document.getElementById('fb-motos-sem').textContent = p.motos_semana;
+
+    const qa = document.getElementById('fb-qa-pct');
+    const pct = p.qa_pct_semana || 0;
+    qa.textContent = pct.toFixed(1) + '%';
+    qa.style.color = pct > 10 ? 'var(--red)' : pct > 5 ? 'var(--orange)' : 'var(--green)';
+
+    if (p.tenure_dias) {
+      const anos = Math.floor(p.tenure_dias / 365);
+      const meses = Math.floor((p.tenure_dias % 365) / 30);
+      document.getElementById('fb-tenure').textContent =
+        `⏱ ${anos > 0 ? anos+'a '+meses+'m' : meses+' meses'} de casa · Entrada: ${p.data_entrada || '—'}`;
+    }
+    if (box) box.style.display = '';
+
+    // ── Calcula média do nível ──
+    const pares = Object.values(cache.porEmail).filter(m => {
+      // Pega todos que têm o mesmo nível — precisamos cruzar com allCols
+      const empPar = allCols.find(c => c.email && c.email.toLowerCase() === (m._email||'').toLowerCase());
+      return empPar && empPar.nivel === nivel && m !== p;
+    });
+
+    // Como não temos _email indexado, vamos reindexar
+    const emailParaNivel = {};
+    allCols.forEach(c => { if (c.email && c.nivel) emailParaNivel[c.email.toLowerCase()] = c.nivel; });
+
+    const paresNivel = Object.entries(cache.porEmail)
+      .filter(([em]) => emailParaNivel[em] === nivel && em !== email.toLowerCase())
+      .map(([, v]) => v);
+
+    const avg = (arr, key) => {
+      const vals = arr.map(m => m[key] || 0).filter(v => v > 0);
+      return vals.length ? Math.round(vals.reduce((a,b) => a+b, 0) / vals.length) : 0;
+    };
+
+    const media = {
+      pontuacao_d1:     avg(paresNivel, 'pontuacao_d1'),
+      pontuacao_semana: avg(paresNivel, 'pontuacao_semana'),
+      pontuacao_mes:    avg(paresNivel, 'pontuacao_mes'),
+      pontuacao_3m:     avg(paresNivel, 'pontuacao_3m'),
+      pontuacao_6m:     avg(paresNivel, 'pontuacao_6m'),
+      qa_pct_semana:    paresNivel.length ? +(paresNivel.reduce((a,m) => a+(m.qa_pct_semana||0), 0) / paresNivel.length).toFixed(1) : 0,
+    };
+
+    // ── Gráfico de linha produção ──
+    if (area) {
+      area.style.display = '';
+      const nLabel = nivel || 'Nível';
+      document.getElementById('fb-nivel-label').textContent = 'Média ' + nLabel;
+
+      const periodos = ['D-1','Semana','Mês','3 Meses'];
+      const mecValues = [p.pontuacao_d1, p.pontuacao_semana, p.pontuacao_mes, p.pontuacao_3m].map(v => v||0);
+      const avgValues = [media.pontuacao_d1, media.pontuacao_semana, media.pontuacao_mes, media.pontuacao_3m];
+
+      renderProdChart('fb-prod-chart', 'fb-prod-tip', periodos, mecValues, avgValues, nLabel);
+
+      // ── Cards de comparação ──
+      const comparisons = [
+        { label: 'Pts Semana',  mec: p.pontuacao_semana, avg: media.pontuacao_semana, higherIsBetter: true },
+        { label: 'Pts Mês',     mec: p.pontuacao_mes,    avg: media.pontuacao_mes,    higherIsBetter: true },
+        { label: '% QA Semana', mec: pct,                 avg: media.qa_pct_semana,    higherIsBetter: false, pct: true },
+      ];
+
+      const cards = document.getElementById('fb-comp-cards');
+      cards.innerHTML = comparisons.map(c => {
+        const diff = c.avg > 0 ? ((c.mec - c.avg) / c.avg * 100) : 0;
+        const isGood = c.higherIsBetter ? diff >= 0 : diff <= 0;
+        const arrow = diff > 1 ? '▲' : diff < -1 ? '▼' : '—';
+        const color = isGood ? 'var(--green)' : 'var(--red)';
+        const fmtVal = v => c.pct ? v.toFixed(1)+'%' : v.toLocaleString('pt-BR');
+        return `<div style="background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:600;">${c.label}</div>
+          <div style="font-size:18px;font-weight:900;color:var(--blue);">${fmtVal(c.mec)}</div>
+          <div style="font-size:10px;margin-top:2px;color:${color};font-weight:700;">${arrow} ${Math.abs(diff).toFixed(0)}% vs média ${fmtVal(c.avg)}</div>
+        </div>`;
+      }).join('');
+    }
+  });
+}
+
+function renderProdChart(canvasId, tipId, labels, mecData, avgData, nivelLabel) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  const W = wrap.offsetWidth || 400, H = 130;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = { t: 12, r: 16, b: 28, l: 44 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const all = [...mecData, ...avgData].filter(v => v > 0);
+  const maxV = all.length ? Math.max(...all) * 1.15 : 100;
+  const n = labels.length;
+
+  const xPos = i => pad.l + (i / (n-1)) * cW;
+  const yPos = v => pad.t + cH - (v / maxV) * cH;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  [0, 0.25, 0.5, 0.75, 1].forEach(t => {
+    const y = pad.t + cH * (1 - t);
+    ctx.strokeStyle = 'rgba(0,0,0,.06)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l+cW, y); ctx.stroke();
+    if (t > 0) {
+      ctx.fillStyle = '#aaa'; ctx.font = '9px Barlow,sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(Math.round(maxV * t), pad.l - 4, y + 3);
+    }
+  });
+
+  // X labels
+  ctx.fillStyle = '#aaa'; ctx.font = '9px Barlow,sans-serif'; ctx.textAlign = 'center';
+  labels.forEach((l, i) => ctx.fillText(l, xPos(i), H - 6));
+
+  const drawLine = (data, color, dash=[]) => {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+    ctx.setLineDash(dash);
+    data.forEach((v, i) => {
+      if (v <= 0) return;
+      i === 0 || data.slice(0,i).every(x=>x<=0) ? ctx.moveTo(xPos(i), yPos(v)) : ctx.lineTo(xPos(i), yPos(v));
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Dots
+    data.forEach((v, i) => {
+      if (v <= 0) return;
+      ctx.beginPath(); ctx.arc(xPos(i), yPos(v), 4, 0, Math.PI*2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(xPos(i), yPos(v), 2, 0, Math.PI*2); ctx.fill();
+    });
+  };
+
+  drawLine(avgData, '#999', [5, 4]);
+  drawLine(mecData, '#2EC2FF');
+
+  // Tooltip
+  const tip = document.getElementById(tipId);
+  canvas.onmousemove = e => {
+    const rect = canvas.getBoundingClientRect(), mx = e.clientX - rect.left;
+    const idx = Math.round((mx - pad.l) / (cW / (n-1)));
+    if (idx < 0 || idx >= n) { tip.style.display='none'; return; }
+    tip.style.display = 'block';
+    tip.innerHTML = `<b>${labels[idx]}</b> · Mec: <b>${mecData[idx]}</b> · Média ${nivelLabel}: <b>${avgData[idx]}</b>`;
+    const tx = e.clientX - rect.left + 10, ty = e.clientY - rect.top - 32;
+    tip.style.left = Math.min(tx, W - tip.offsetWidth - 10)+'px';
+    tip.style.top  = Math.max(ty, 4)+'px';
+  };
+  canvas.onmouseleave = () => { tip.style.display='none'; };
+}
+
 </script>
 </body>
 </html>

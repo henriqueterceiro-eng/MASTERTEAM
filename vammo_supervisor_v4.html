@@ -1360,7 +1360,7 @@ function carregarProducaoCache(cb) {
 
 function carregarProducaoMecanico() {
   const nomeSel = document.getElementById('fb-colaborador').value;
-  const emp = allCols.find(c => c.nome === nomeSel) || team.find(t => t.nome === nomeSel);
+  const emp = team.find(t => t.nome === nomeSel);
   const email = emp?.email;
   const nivel = emp?.nivel || '';
   const box   = document.getElementById('fb-producao');
@@ -1398,15 +1398,8 @@ function carregarProducaoMecanico() {
     if (box) box.style.display = '';
 
     // ── Calcula média do nível ──
-    const pares = Object.values(cache.porEmail).filter(m => {
-      // Pega todos que têm o mesmo nível — precisamos cruzar com allCols
-      const empPar = allCols.find(c => c.email && c.email.toLowerCase() === (m._email||'').toLowerCase());
-      return empPar && empPar.nivel === nivel && m !== p;
-    });
-
-    // Como não temos _email indexado, vamos reindexar
     const emailParaNivel = {};
-    allCols.forEach(c => { if (c.email && c.nivel) emailParaNivel[c.email.toLowerCase()] = c.nivel; });
+    team.forEach(c => { if (c.email && c.nivel) emailParaNivel[c.email.toLowerCase()] = c.nivel; });
 
     const paresNivel = Object.entries(cache.porEmail)
       .filter(([em]) => emailParaNivel[em] === nivel && em !== email.toLowerCase())

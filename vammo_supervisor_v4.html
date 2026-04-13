@@ -204,6 +204,9 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 .tick-label{font-size:11px;font-weight:700;letter-spacing:2px;color:#FFFFFF;text-transform:uppercase;}
 .tick-val{font-size:28px;font-weight:900;color:#00FF00;text-shadow:0 0 10px #00FF00,0 0 20px #00AA00;font-variant-numeric:tabular-nums;letter-spacing:2px;}
 .tick-item.danger .tick-val{color:#FF2222;text-shadow:0 0 10px #FF2222,0 0 20px #AA0000;}
+.meta-score-badge{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:800;background:var(--blue-d);color:var(--blue);border:1px solid var(--blue-b);letter-spacing:.5px;}
+.meta-score-badge.atingido{background:var(--green-d);color:var(--green);border-color:rgba(0,200,83,.3);}
+.meta-score-badge.negativo{background:var(--red-d);color:var(--red);border-color:rgba(242,53,87,.3);}
 .tick-item.warn .tick-val{color:#FFCC00;text-shadow:0 0 10px #FFCC00,0 0 20px #AA8800;}
 .tick-chg{font-size:13px;font-weight:900;padding:2px 7px;border-radius:2px;letter-spacing:1px;font-family:'Courier New',monospace;}
 .tick-chg.up{background:#CC0000;color:#FFFFFF;}
@@ -296,6 +299,23 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
     <div class="sb-sec">
       <div class="sb-lbl">Ocupações</div>
       <div class="ocup-list" id="ocup-list"><div style="font-size:11px;color:var(--muted)">—</div></div>
+    </div>
+
+    <div class="sb-sec" id="meta-sem-panel" style="display:none;">
+      <div class="sb-lbl">📈 Horizonte da semana</div>
+      <div style="background:var(--white);border:1px solid var(--b1);border-radius:10px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--muted);font-weight:600;">PRODUÇÃO DA SEMANA</span>
+          <span style="font-size:18px;font-weight:900;color:var(--blue);" id="meta-sem-feito">—</span>
+        </div>
+        <div style="background:var(--bg);border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px;">
+          <div id="meta-sem-bar" style="height:100%;background:var(--blue);border-radius:6px;transition:width .5s;width:0%;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;">
+          <span style="color:var(--muted);">Meta: <strong id="meta-sem-meta">—</strong> pts</span>
+          <span id="meta-sem-falta" style="font-weight:800;">—</span>
+        </div>
+      </div>
     </div>
 
     <div class="sb-sec">
@@ -1101,7 +1121,10 @@ function renderTable() {
     const pIni=s.periodoIni||dv, pFim=s.periodoFim||dv;
     html+=`<tr data-s="${esc(status)}" id="tr-${ne}">
       <td style="color:var(--muted2);font-size:11px;font-weight:600">${i+1}</td>
-      <td class="nm">${emp.nome}</td>
+      <td class="nm">
+        ${emp.nome}
+        ${(s.ocupacao==='Rampa'&&metaAtual)?`<span class="meta-score-badge" id="msb-${ne}">🎯 ${calcMetaScore()} pts</span>`:''}
+      </td>
       <td class="sc">${emp.setor}</td>
       <td><select class="ss ${scCls}" data-nome="${ne}" onchange="onStatus(this)">
         <option value="">— sem status —</option>
@@ -1181,7 +1204,28 @@ function renderRow(nome) {
     :'<span style="font-size:11px;color:var(--muted2)">—</span>';
 }
 
-function onOcup(sel){const nome=dec(sel.dataset.nome);sel.classList.toggle('filled',!!sel.value);if(!state[nome])state[nome]={};state[nome].ocupacao=sel.value;markDirty();updateStats();}
+function onOcup(sel){
+  const nome=dec(sel.dataset.nome);
+  sel.classList.toggle('filled',!!sel.value);
+  if(!state[nome])state[nome]={};
+  state[nome].ocupacao=sel.value;
+  markDirty();
+  updateStats();
+  // Mostra/esconde badge de meta score
+  const ne=enc(nome);
+  const badge=document.getElementById('msb-'+ne);
+  if(badge){
+    if(sel.value==='Rampa'&&metaAtual){
+      badge.style.display='';
+    } else {
+      badge.style.display='none';
+    }
+  } else if(sel.value==='Rampa'&&metaAtual) {
+    // Badge não existe ainda — precisa re-render a linha
+    renderRow(nome);
+  }
+  atualizarMetaScores();
+}
 function onPeriod(inp){const nome=dec(inp.dataset.nome);if(!state[nome])state[nome]={};state[nome][inp.dataset.tipo==='ini'?'periodoIni':'periodoFim']=inp.value;markDirty();}
 function onObs(inp){const nome=dec(inp.dataset.nome);if(!state[nome])state[nome]={};state[nome].obs=inp.value;markDirty();}
 
@@ -1284,7 +1328,9 @@ function call(action,params,cb){
   const to=setTimeout(()=>{toast('❌ Timeout');delete window[cbName];sc.remove();},15000);
   window[cbName]=data=>{clearTimeout(to);delete window[cbName];sc.remove();cb(data);};
   sc.onerror=()=>{clearTimeout(to);toast('❌ Erro de conexão');delete window[cbName];sc.remove();};
-  sc.src=SCRIPT_URL+'?'+qs;document.head.appendChild(sc);
+  sc.async=true;
+  document.head.appendChild(sc);
+  sc.src=SCRIPT_URL+'?'+qs;
 }
 function callAsync(a,p){return new Promise(r=>call(a,p,r));}
 let _tt;
@@ -1315,6 +1361,7 @@ function carregarMetaSupervisor(supNome) {
       }
       metaAtual = { ...m, turnoId };
       document.getElementById('meta-panel').style.display = '';
+      if (producaoCache) atualizarMetaSemanal();
       document.getElementById('meta-dia-val').textContent = m.metaDiaria + ' pts';
       document.getElementById('meta-dia-ref').textContent =
         'Meta semanal: ' + m.meta + ' pts ÷ ' + (m.escala === '5x2' ? 5 : 6) + ' dias';
@@ -1355,8 +1402,9 @@ let producaoCache = null;  // { porEmail: {...} }
 function carregarProducaoCache(cb) {
   if (producaoCache) { cb(producaoCache); return; }
   call('producao', {}, d => {
-    if (d.ok) producaoCache = d;
+    if (d.ok) { producaoCache = d; }
     cb(producaoCache);
+    if (producaoCache && metaAtual) atualizarMetaSemanal();
   });
 }
 
@@ -1528,6 +1576,75 @@ function renderProdChart(canvasId, tipId, labels, mecData, avgData, nivelLabel) 
     tip.style.top  = Math.max(ty, 4)+'px';
   };
   canvas.onmouseleave = () => { tip.style.display='none'; };
+}
+
+
+// ══════════════════════════════════════════════════
+// META SCORE — pontuação individual por mecânico Rampa
+// ══════════════════════════════════════════════════
+
+function calcMetaScore() {
+  if (!metaAtual || !metaAtual.metaDiaria) return '—';
+  // Conta quantos mecânicos estão na Rampa agora
+  const COM_OCUP = ['Presente','Atraso +15min'];
+  let rampaCount = 0;
+  team.forEach(emp => {
+    const s = state[emp.nome];
+    if (s && COM_OCUP.includes(s.status) && s.ocupacao === 'Rampa') rampaCount++;
+  });
+  if (rampaCount === 0) return '—';
+  return Math.round(metaAtual.metaDiaria / rampaCount);
+}
+
+function atualizarMetaScores() {
+  if (!metaAtual || !metaAtual.metaDiaria) return;
+  const score = calcMetaScore();
+  // Atualiza todos os badges visíveis
+  document.querySelectorAll('.meta-score-badge').forEach(el => {
+    el.textContent = '🎯 ' + score + ' pts';
+  });
+  // Atualiza o painel lateral também
+  atualizarMetaRampa();
+}
+
+
+function atualizarMetaSemanal() {
+  if (!metaAtual || !producaoCache) return;
+  const panel = document.getElementById('meta-sem-panel');
+  if (!panel) return;
+
+  // Soma pontuação da semana de todos do time que têm email
+  const emailParaNome = {};
+  team.forEach(m => { if (m.email) emailParaNome[m.email.toLowerCase()] = m.nome; });
+
+  let totalSemana = 0;
+  Object.entries(producaoCache.porEmail).forEach(([email, p]) => {
+    if (emailParaNome[email]) totalSemana += (p.pontuacao_semana || 0);
+  });
+
+  const meta = metaAtual.meta || 0;
+  if (!meta) { panel.style.display = 'none'; return; }
+
+  const falta = Math.max(0, meta - totalSemana);
+  const pct   = Math.min(100, Math.round(totalSemana / meta * 100));
+  const atingiu = totalSemana >= meta;
+
+  panel.style.display = '';
+  document.getElementById('meta-sem-feito').textContent = totalSemana.toLocaleString('pt-BR') + ' pts';
+  document.getElementById('meta-sem-meta').textContent  = meta.toLocaleString('pt-BR');
+
+  const bar = document.getElementById('meta-sem-bar');
+  bar.style.width  = pct + '%';
+  bar.style.background = atingiu ? 'var(--green)' : pct > 70 ? 'var(--blue)' : pct > 40 ? 'var(--orange)' : 'var(--red)';
+
+  const faltaEl = document.getElementById('meta-sem-falta');
+  if (atingiu) {
+    faltaEl.textContent = '✅ Meta atingida!';
+    faltaEl.style.color = 'var(--green)';
+  } else {
+    faltaEl.textContent = 'Falta: ' + falta.toLocaleString('pt-BR') + ' pts (' + (100-pct) + '%)';
+    faltaEl.style.color = pct > 70 ? 'var(--orange)' : 'var(--red)';
+  }
 }
 
 </script>

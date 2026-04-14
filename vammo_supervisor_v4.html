@@ -284,15 +284,29 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
     <!-- PAINEL DE META -->
     <div class="sb-sec" id="meta-panel" style="display:none;">
       <div class="sb-lbl">🎯 Meta do dia</div>
-      <div style="background:var(--blue-d);border:1px solid var(--blue-b);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Pontuação do turno</div>
+      <!-- Meta do turno -->
+      <div style="background:var(--blue-d);border:1px solid var(--blue-b);border-radius:10px;padding:12px;text-align:center;margin-bottom:8px;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Pontuação do turno</div>
         <div style="font-size:28px;font-weight:900;color:var(--blue);" id="meta-dia-val">—</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px;" id="meta-dia-ref"></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;" id="meta-dia-ref"></div>
       </div>
-      <div style="margin-top:10px;background:var(--green-d);border:1px solid rgba(0,200,83,.3);border-radius:10px;padding:12px;text-align:center;" id="meta-rampa-box">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Por mecânico de Rampa</div>
-        <div style="font-size:24px;font-weight:900;color:var(--green);" id="meta-rampa-val">—</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px;" id="meta-rampa-ref"></div>
+      <!-- Score acumulado em tempo real -->
+      <div style="background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:10px;text-align:center;margin-bottom:8px;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Produção acumulada hoje</div>
+        <div style="font-size:22px;font-weight:900;color:var(--green);" id="prod-acumulada-val">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;" id="prod-acumulada-ref">Soma das pontuações</div>
+      </div>
+      <!-- Saldo restante -->
+      <div style="border-radius:10px;padding:10px;text-align:center;" id="meta-saldo-box">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Saldo restante</div>
+        <div style="font-size:24px;font-weight:900;" id="meta-saldo-val">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;" id="meta-saldo-ref"></div>
+      </div>
+      <!-- Por mecânico Rampa -->
+      <div style="margin-top:4px;background:var(--green-d);border:1px solid rgba(0,200,83,.3);border-radius:10px;padding:10px;text-align:center;" id="meta-rampa-box">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Meta por Rampa</div>
+        <div style="font-size:22px;font-weight:900;color:var(--green);" id="meta-rampa-val">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;" id="meta-rampa-ref"></div>
       </div>
     </div>
 
@@ -488,8 +502,19 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
           <div id="fb-prod-tip" style="display:none;position:absolute;background:var(--text);color:#fff;padding:6px 11px;border-radius:7px;font-size:11px;pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--shadow-md);"></div>
         </div>
 
+        <!-- Cards de motos hoje -->
+        <div id="fb-motos-hoje-row" style="display:none;margin-top:10px;background:var(--green-d);border:1px solid rgba(0,200,83,.3);border-radius:10px;padding:10px;display:flex;align-items:center;gap:16px;">
+          <div style="text-align:center;flex:1;">
+            <div style="font-size:11px;color:var(--muted);">Motos Hoje</div>
+            <div style="font-size:22px;font-weight:900;color:var(--green);" id="fb-motos-hoje">—</div>
+          </div>
+          <div style="text-align:center;flex:1;">
+            <div style="font-size:11px;color:var(--muted);">Pts Hoje</div>
+            <div style="font-size:22px;font-weight:900;color:var(--blue);" id="fb-pts-hoje">—</div>
+          </div>
+        </div>
         <!-- Cards de comparação -->
-        <div id="fb-comp-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;"></div>
+        <div id="fb-comp-cards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px;"></div>
       </div>
 
       <!-- Timeline -->
@@ -1372,25 +1397,49 @@ function carregarMetaSupervisor(supNome) {
 
 function atualizarMetaRampa() {
   if (!metaAtual) return;
-  // Conta mecânicos com ocupação Rampa e status presente/atraso
-  const COM_OCUP = ['Presente','Atraso +15min'];
+  const COM_PRES = ['Presente','Atraso +15min'];
   let rampaCount = 0;
+  let prodAcumulada = 0;
+
   team.forEach(emp => {
     const s = state[emp.nome];
-    if (s && COM_OCUP.includes(s.status) && s.ocupacao === 'Rampa') rampaCount++;
+    if (!s || !COM_PRES.includes(s.status)) return;
+    if (s.ocupacao === 'Rampa') rampaCount++;
+    // Soma pontuacao_hoje de quem está presente
+    if (producaoCache && emp.email) {
+      const p = producaoCache.porEmail[emp.email.toLowerCase()];
+      if (p) prodAcumulada += (p.pontuacao_hoje || 0);
+    }
   });
 
-  const boxRampa = document.getElementById('meta-rampa-box');
+  // Produção acumulada
+  const valAcum = document.getElementById('prod-acumulada-val');
+  const refAcum = document.getElementById('prod-acumulada-ref');
+  if (valAcum) { valAcum.textContent = prodAcumulada > 0 ? prodAcumulada.toLocaleString('pt-BR') + ' pts' : '—'; }
+  if (refAcum) { refAcum.textContent = 'pontuacao_hoje (D-1 até ter tempo real)'; }
+
+  // Saldo restante
+  const saldo = metaAtual.metaDiaria - prodAcumulada;
+  const valSaldo = document.getElementById('meta-saldo-val');
+  const refSaldo = document.getElementById('meta-saldo-ref');
+  const boxSaldo = document.getElementById('meta-saldo-box');
+  if (valSaldo) {
+    valSaldo.textContent = saldo.toLocaleString('pt-BR') + ' pts';
+    valSaldo.style.color = saldo <= 0 ? 'var(--green)' : saldo < metaAtual.metaDiaria * 0.3 ? 'var(--orange)' : 'var(--red)';
+    if (boxSaldo) boxSaldo.style.background = saldo <= 0 ? 'var(--green-d)' : 'var(--red-d)';
+    if (refSaldo) refSaldo.textContent = saldo <= 0 ? '🎉 Meta atingida!' : metaAtual.metaDiaria + ' - ' + prodAcumulada;
+  }
+
+  // Meta por mecânico Rampa
   const valRampa = document.getElementById('meta-rampa-val');
   const refRampa = document.getElementById('meta-rampa-ref');
-
   if (rampaCount === 0) {
-    valRampa.textContent = '—';
-    refRampa.textContent = 'Nenhum mecânico na Rampa';
+    if (valRampa) valRampa.textContent = '—';
+    if (refRampa) refRampa.textContent = 'Nenhum mecânico na Rampa';
   } else {
     const ptsPorMec = Math.round(metaAtual.metaDiaria / rampaCount);
-    valRampa.textContent = ptsPorMec + ' pts';
-    refRampa.textContent = metaAtual.metaDiaria + ' pts ÷ ' + rampaCount + ' na Rampa';
+    if (valRampa) valRampa.textContent = ptsPorMec + ' pts';
+    if (refRampa) refRampa.textContent = metaAtual.metaDiaria + ' pts ÷ ' + rampaCount + ' na Rampa';
   }
 }
 
@@ -1428,6 +1477,14 @@ function carregarProducaoMecanico() {
     if (!p) { if (box) box.style.display = 'none'; if (area) area.style.display = 'none'; return; }
 
     // ── Preenche cards simples ──
+    // Motos e pts hoje
+    const mhRow = document.getElementById('fb-motos-hoje-row');
+    if (mhRow) mhRow.style.display = '';
+    const elPtsHoje = document.getElementById('fb-pts-hoje');
+    const elMotosHoje = document.getElementById('fb-motos-hoje');
+    if (elPtsHoje) elPtsHoje.textContent = p.pontuacao_hoje > 0 ? p.pontuacao_hoje + ' pts' : '—';
+    if (elMotosHoje) elMotosHoje.textContent = p.motos_hoje > 0 ? p.motos_hoje + ' motos' : '—';
+
     document.getElementById('fb-pts-d1').textContent    = p.pontuacao_d1;
     document.getElementById('fb-pts-sem').textContent   = p.pontuacao_semana;
     document.getElementById('fb-pts-mes').textContent   = p.pontuacao_mes;
@@ -1475,17 +1532,20 @@ function carregarProducaoMecanico() {
       const nLabel = nivel || 'Nível';
       document.getElementById('fb-nivel-label').textContent = 'Média ' + nLabel;
 
-      const periodos = ['D-1','Semana','Mês','3 Meses'];
-      const mecValues = [p.pontuacao_d1, p.pontuacao_semana, p.pontuacao_mes, p.pontuacao_3m].map(v => v||0);
-      const avgValues = [media.pontuacao_d1, media.pontuacao_semana, media.pontuacao_mes, media.pontuacao_3m];
+      const periodos = ['Hoje','D-1','Semana','Mês','3 Meses'];
+      const mecValues = [p.pontuacao_hoje, p.pontuacao_d1, p.pontuacao_semana, p.pontuacao_mes, p.pontuacao_3m].map(v => v||0);
+      const avgValues = [avg(paresNivel,'pontuacao_hoje'), media.pontuacao_d1, media.pontuacao_semana, media.pontuacao_mes, media.pontuacao_3m];
 
       renderProdChart('fb-prod-chart', 'fb-prod-tip', periodos, mecValues, avgValues, nLabel);
 
       // ── Cards de comparação ──
       const comparisons = [
+        { label: 'Pts Hoje',    mec: p.pontuacao_hoje,   avg: avg(paresNivel,'pontuacao_hoje'),   higherIsBetter: true },
         { label: 'Pts Semana',  mec: p.pontuacao_semana, avg: media.pontuacao_semana, higherIsBetter: true },
-        { label: 'Pts Mês',     mec: p.pontuacao_mes,    avg: media.pontuacao_mes,    higherIsBetter: true },
+        { label: 'Motos Hoje',  mec: p.motos_hoje,       avg: avg(paresNivel,'motos_hoje'),       higherIsBetter: true },
+        { label: 'Motos Semana',mec: p.motos_semana,     avg: avg(paresNivel,'motos_semana'),     higherIsBetter: true },
         { label: '% QA Semana', mec: pct,                 avg: media.qa_pct_semana,    higherIsBetter: false, pct: true },
+        { label: 'Pts Mês',     mec: p.pontuacao_mes,    avg: media.pontuacao_mes,    higherIsBetter: true },
       ];
 
       const cards = document.getElementById('fb-comp-cards');

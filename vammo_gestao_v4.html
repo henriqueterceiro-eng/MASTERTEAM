@@ -601,6 +601,10 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
       <div class="form-l">E-mail</div>
       <input type="email" id="col-email" placeholder="Ex: joao@vammo.com.br" autocomplete="off">
     </div>
+    <div class="form-r">
+      <div class="form-l">Data de Admissão</div>
+      <input type="date" id="col-admissao" style="width:100%;">
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="form-r">
         <div class="form-l">Turno</div>
@@ -1265,7 +1269,10 @@ function renderCols() {
     const tNome   = turnoNome(e.turno) || e.turno;
     return '<tr style="opacity:' + (isAtivo?1:0.55) + '">' +
       '<td style="border-radius:10px 0 0 10px;color:var(--muted2);font-size:11px;width:36px">' + (i+1) + '</td>' +
-      '<td><div style="font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:700;color:var(--text)">' + e.nome + '</div></td>' +
+      '<td><div style="font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:700;color:var(--text)">' + e.nome + '</div>' +
+        (e.admissao ? '<div style="font-size:10px;color:var(--muted);margin-top:1px;">📅 Admissão: ' + e.admissao + '</div>' : '') +
+        (!isAtivo && e.desativacao ? '<div style="font-size:10px;color:var(--red);margin-top:1px;">🔴 Desativado: ' + e.desativacao + '</div>' : '') +
+      '</td>' +
       '<td><span class="badge b-blue" style="font-size:10px">' + tNome + '</span></td>' +
       '<td style="font-size:11px;color:var(--muted)">' + e.setor + '</td>' +
       '<td>' + (e.nivel ? '<span class="badge" style="background:rgba(139,92,246,.1);color:var(--purple);border:1px solid rgba(139,92,246,.25);font-size:10px">' + e.nivel + '</span>' : '<span style="color:var(--muted2);font-size:11px">—</span>') + '</td>' +
@@ -1324,6 +1331,7 @@ function abrirNovoCol() {
     document.getElementById('modal-col-title').textContent = 'NOVO COLABORADOR';
     document.getElementById('col-nome').value  = '';
     document.getElementById('col-email').value = '';
+    document.getElementById('col-admissao').value = new Date().toISOString().substring(0,10);
     document.getElementById('btn-excluir-col').style.display = 'none';
     document.getElementById('col-orig').value  = '';
     document.getElementById('col-turno-orig').value = '';
@@ -1354,6 +1362,7 @@ function editCol(ne) {
   document.getElementById('modal-col-title').textContent = 'EDITAR COLABORADOR';
   document.getElementById('col-nome').value      = emp.nome;
   document.getElementById('col-email').value     = emp.email || '';
+  document.getElementById('col-admissao').value  = emp.admissao ? emp.admissao.split('/').reverse().join('-') : '';
   document.getElementById('col-setor').value     = emp.setor;
   document.getElementById('col-orig').value      = emp.nome;
   document.getElementById('col-turno-orig').value = emp.turno;
@@ -1387,7 +1396,8 @@ function editCol(ne) {
 
 function salvarCol() {
   const nome  = document.getElementById('col-nome').value.trim();
-  const email = document.getElementById('col-email').value.trim();
+  const email    = document.getElementById('col-email').value.trim();
+  const admissao = document.getElementById('col-admissao').value;
   const turno = document.getElementById('col-turno').value;
   const setor = document.getElementById('col-setor').value;
   const nivel = document.getElementById('col-nivel')?.value || '';
@@ -1398,8 +1408,8 @@ function salvarCol() {
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
   const isEdit = !!orig;
   const params = isEdit
-    ? { nome, email, turno, setor, nivel, nomeOriginal: orig }
-    : { nome, email, turno, setor, nivel };
+    ? { nome, email, admissao, turno, setor, nivel, nomeOriginal: orig }
+    : { nome, email, admissao, turno, setor, nivel };
   call(isEdit ? 'editCol' : 'addCol', params, d => {
     btn.disabled = false; btn.textContent = '💾 Salvar';
     if (d.error) { toast('❌ ' + d.error); return; }

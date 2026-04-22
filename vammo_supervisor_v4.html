@@ -1111,13 +1111,19 @@ function loadPresencas() {
   const sup = document.getElementById('sel-sup').value;
   const ds  = toDisp(document.getElementById('inp-data').value);
   call('presencasDia',{supervisor:sup,data:ds},d=>{
-    const saved = d.presencas||{};
-    const hasAny = Object.keys(saved).length > 0;
+    const saved   = d.presencas||{};
+    const hasAny  = Object.keys(saved).length > 0;
+    const localSt = loadStateLocal(sup, ds);  // afastados/férias salvos localmente
     state = {};
     team.forEach(emp=>{
-      state[emp.nome] = saved[emp.nome]
-        ? {...saved[emp.nome],periodoIni:'',periodoFim:''}
-        : {status:hasAny?'':'Presente',ocupacao:'',obs:'',periodoIni:'',periodoFim:''};
+      // Prioridade: Sheets > localStorage (apenas para períodos) > padrão
+      if (saved[emp.nome]) {
+        state[emp.nome] = {...saved[emp.nome], periodoIni:'', periodoFim:''};
+      } else if (localSt[emp.nome]) {
+        state[emp.nome] = localSt[emp.nome]; // restaura afastado/férias local
+      } else {
+        state[emp.nome] = {status:hasAny?'':'Presente', ocupacao:'', obs:'', periodoIni:'', periodoFim:''};
+      }
     });
     dirty=false;
     setIndic('ok',hasAny?'Carregado':'Padrão: todos presentes');
@@ -1341,6 +1347,29 @@ function toDisp(v){const[y,m,d]=v.split('-');return `${d}/${m}/${y}`;}
 function enc(s){return encodeURIComponent(s);}
 function dec(s){return decodeURIComponent(s);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
+function saveStateLocal() {
+  try {
+    const sup = document.getElementById('sel-sup').value;
+    const dv  = document.getElementById('inp-data').value;
+    if (!sup || !dv) return;
+    // Só salva afastados/férias — os outros o app já recarrega do Sheets
+    const toSave = {};
+    Object.entries(state).forEach(([nome, s]) => {
+      if (COM_PERIODO.includes(s.status)) toSave[nome] = s;
+    });
+    const key = 'vammo_state_' + sup + '_' + dv;
+    localStorage.setItem(key, JSON.stringify(toSave));
+  } catch(e) {}
+}
+
+function loadStateLocal(sup, dv) {
+  try {
+    const key = 'vammo_state_' + sup + '_' + dv;
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+
 function markDirty(){dirty=true;setIndic('dirty','Não salvo');}
 function setIndic(st,msg){['save-ind','save-ind2'].forEach(id=>{const el=document.getElementById(id);el.classList.remove('hidden','ok','dirty');el.classList.add(st);el.textContent=st==='ok'?'✓ '+msg:'● '+msg;});}
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});

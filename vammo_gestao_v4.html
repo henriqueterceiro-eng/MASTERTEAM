@@ -1266,7 +1266,7 @@ function renderCols() {
 
   tbody.innerHTML = list.map((e, i) => {
     const isAtivo = e.status === 'Ativo';
-    const tNome   = turnoNome(e.turno) || e.turno;
+    const tNome   = e.turnoNome || turnoNome(e.turno) || e.turno;
     return '<tr style="opacity:' + (isAtivo?1:0.55) + '">' +
       '<td style="border-radius:10px 0 0 10px;color:var(--muted2);font-size:11px;width:36px">' + (i+1) + '</td>' +
       '<td><div style="font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:700;color:var(--text)">' + e.nome + '</div>' +

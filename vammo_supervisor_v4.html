@@ -1297,7 +1297,7 @@ async function salvar(){
     const s=state[emp.nome];
     if(!s?.status)return;
     if(COM_PERIODO.includes(s.status))periodos.push({nome:emp.nome,status:s.status,ini:toDisp(s.periodoIni||dv),fim:toDisp(s.periodoFim||dv),obs:s.obs||''});
-    else chamada.push({nome:emp.nome,status:s.status,ocupacao:s.ocupacao||'',obs:s.obs||'',email:emp.email||'',turno:emp.turno||''});
+    else chamada.push({nome:enc(emp.nome),st:s.status[0]||'',oc:s.ocupacao||'',ob:s.obs||''});
   });
   if(!chamada.length&&!periodos.length){toast('⚠️ Nenhum status preenchido!');return;}
   const btn=document.getElementById('btn-salvar');

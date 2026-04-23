@@ -567,11 +567,10 @@ function isEmTreinamento(emp) {
   const adm = emp.admissao;
   let admDate;
   if (typeof adm === 'string' && adm.includes('/')) {
-    const [d,m,y] = adm.split('/');
-    admDate = new Date(Number(y), Number(m)-1, Number(d));
-  } else if (typeof adm === 'string' && adm.includes('-')) {
-    admDate = new Date(adm + 'T12:00:00');
+    const parts = adm.split('/');
+    admDate = new Date(Number(parts[2]), Number(parts[1])-1, Number(parts[0]));
   } else {
+    // Cobre ISO strings ("2026-03-25T03:00:00.000Z") e qualquer outro formato
     admDate = new Date(adm);
   }
   if (isNaN(admDate.getTime())) return false;

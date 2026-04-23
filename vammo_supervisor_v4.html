@@ -207,6 +207,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 .meta-score-badge{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:800;background:var(--blue-d);color:var(--blue);border:1px solid var(--blue-b);letter-spacing:.5px;}
 .meta-score-badge.atingido{background:var(--green-d);color:var(--green);border-color:rgba(0,200,83,.3);}
 .meta-score-badge.negativo{background:var(--red-d);color:var(--red);border-color:rgba(242,53,87,.3);}
+.star-badge{font-size:13px;cursor:help;}
 .tick-item.warn .tick-val{color:#FFCC00;text-shadow:0 0 10px #FFCC00,0 0 20px #AA8800;}
 .tick-chg{font-size:13px;font-weight:900;padding:2px 7px;border-radius:2px;letter-spacing:1px;font-family:'Courier New',monospace;}
 .tick-chg.up{background:#CC0000;color:#FFFFFF;}
@@ -278,6 +279,7 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
         <div class="stat"><div class="stat-n" id="st-atra" style="color:var(--yellow)">0</div><div class="stat-l">Atrasos</div></div>
         <div class="stat"><div class="stat-n" id="st-falt" style="color:var(--red)">0</div><div class="stat-l">Faltas</div></div>
         <div class="stat"><div class="stat-n" id="st-outr" style="color:var(--muted)">0</div><div class="stat-l">Outros</div></div>
+        <div class="stat"><div class="stat-n" id="st-trein" style="color:var(--orange,#f5a623)">0</div><div class="stat-l">⭐ Treinamento</div></div>
       </div>
     </div>
 
@@ -559,6 +561,24 @@ const OCUPACOES = ['Rampa','Qualidade','Diagnóstico','Mesa','Driver','Serviço 
 const SC = {'Presente':'s-pres','Atraso +15min':'s-atra','Faltou':'s-falt','Afastado':'s-afas','Férias':'s-fer','Folga':'s-folg'};
 const COM_OCUP    = ['Presente','Atraso +15min'];
 const COM_PERIODO = ['Afastado','Férias'];
+
+function isEmTreinamento(emp) {
+  if (!emp.admissao) return false;
+  const adm = emp.admissao;
+  let admDate;
+  if (typeof adm === 'string' && adm.includes('/')) {
+    const [d,m,y] = adm.split('/');
+    admDate = new Date(Number(y), Number(m)-1, Number(d));
+  } else if (typeof adm === 'string' && adm.includes('-')) {
+    admDate = new Date(adm + 'T12:00:00');
+  } else {
+    admDate = new Date(adm);
+  }
+  if (isNaN(admDate.getTime())) return false;
+  const hoje = new Date();
+  const diff = Math.floor((hoje - admDate) / (1000*60*60*24));
+  return diff >= 0 && diff <= 30;
+}
 const DIAS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 
 let team = [], state = {}, turnoMap = {}, dirty = false;
@@ -1118,7 +1138,12 @@ function loadPresencas() {
     team.forEach(emp=>{
       // Prioridade: Sheets > localStorage (apenas para períodos) > padrão
       if (saved[emp.nome]) {
-        state[emp.nome] = {...saved[emp.nome], periodoIni:'', periodoFim:''};
+        const sv = saved[emp.nome];
+        // Converte datas de período dd/MM/yyyy → yyyy-MM-dd para inputs date
+        let pIni = '', pFim = '';
+        if (sv.periodoIni) { const [d,m,y] = sv.periodoIni.split('/'); pIni = y+'-'+m+'-'+d; }
+        if (sv.periodoFim) { const [d,m,y] = sv.periodoFim.split('/'); pFim = y+'-'+m+'-'+d; }
+        state[emp.nome] = {...sv, periodoIni: pIni, periodoFim: pFim};
       } else if (localSt[emp.nome]) {
         state[emp.nome] = localSt[emp.nome]; // restaura afastado/férias local
       } else {
@@ -1153,7 +1178,7 @@ function renderTable() {
     html+=`<tr data-s="${esc(status)}" id="tr-${ne}">
       <td style="color:var(--muted2);font-size:11px;font-weight:600">${i+1}</td>
       <td class="nm">
-        ${emp.nome}
+        ${emp.nome}${isEmTreinamento(emp)?'<span class="star-badge" title="Em treinamento (< 30 dias)"> ⭐</span>':''}
         ${(s.ocupacao==='Rampa'&&metaAtual)?`<span class="meta-score-badge" id="msb-${ne}">🎯 ${calcMetaScore()} pts</span>`:''}
       </td>
       <td class="sc">${emp.setor}</td>
@@ -1197,7 +1222,6 @@ function onStatus(sel) {
   if(!COM_OCUP.includes(status))state[nome].ocupacao='';
   if(!COM_PERIODO.includes(status)){state[nome].periodoIni='';state[nome].periodoFim='';}
   else{
-    // Grava data padrão no state para não cair no fallback vazio ao salvar
     const dv=document.getElementById('inp-data').value;
     if(!state[nome].periodoIni)state[nome].periodoIni=dv;
     if(!state[nome].periodoFim)state[nome].periodoFim=dv;
@@ -1277,9 +1301,10 @@ function markAll(status){
 }
 
 function updateStats(){
-  let pres=0,atra=0,falt=0,outr=0;
+  let pres=0,atra=0,falt=0,outr=0,trein=0;
   const ocupC={};
   team.forEach(emp=>{
+    if(isEmTreinamento(emp))trein++;
     const s=state[emp.nome]?.status||'';
     if(s==='Presente')pres++;
     else if(s==='Atraso +15min'){atra++;pres++;}
@@ -1291,6 +1316,8 @@ function updateStats(){
   document.getElementById('st-atra').textContent=atra;
   document.getElementById('st-falt').textContent=falt;
   document.getElementById('st-outr').textContent=outr;
+  const treinEl=document.getElementById('st-trein');
+  if(treinEl)treinEl.textContent=trein;
   const tot=pres||1, entries=Object.entries(ocupC).sort((a,b)=>b[1]-a[1]);
   const el=document.getElementById('ocup-list');
   el.innerHTML=entries.length

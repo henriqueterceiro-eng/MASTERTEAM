@@ -1196,6 +1196,12 @@ function onStatus(sel) {
   state[nome].status=status;
   if(!COM_OCUP.includes(status))state[nome].ocupacao='';
   if(!COM_PERIODO.includes(status)){state[nome].periodoIni='';state[nome].periodoFim='';}
+  else{
+    // Grava data padrão no state para não cair no fallback vazio ao salvar
+    const dv=document.getElementById('inp-data').value;
+    if(!state[nome].periodoIni)state[nome].periodoIni=dv;
+    if(!state[nome].periodoFim)state[nome].periodoFim=dv;
+  }
   renderRow(nome);
   markDirty();
   updateStats();

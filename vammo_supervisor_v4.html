@@ -1452,6 +1452,13 @@ function carregarMetaSupervisor(supNome) {
       document.getElementById('meta-dia-ref').textContent =
         'Meta semanal: ' + m.meta + ' pts ÷ ' + (m.escala === '5x2' ? 5 : 6) + ' dias';
       atualizarMetaRampa();
+      // Re-renderiza tabela para criar badges agora que metaAtual existe
+      if (team.length > 0) renderTable();
+      // Carrega produção real proativamente
+      carregarProducaoCache(function() {
+        atualizarMetaScores();
+        atualizarMetaRampa();
+      });
     });
   });
 }

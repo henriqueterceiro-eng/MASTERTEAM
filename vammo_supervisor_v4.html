@@ -1477,7 +1477,7 @@ function atualizarMetaRampa() {
   const valAcum = document.getElementById('prod-acumulada-val');
   const refAcum = document.getElementById('prod-acumulada-ref');
   if (valAcum) { valAcum.textContent = prodAcumulada > 0 ? prodAcumulada.toLocaleString('pt-BR') + ' pts' : '—'; }
-  if (refAcum) { refAcum.textContent = 'pontuacao_hoje (D-1 até ter tempo real)'; }
+  if (refAcum) { refAcum.textContent = producaoCache ? 'Pontuação em tempo real' : 'Carregando...'; }
 
   // Saldo restante
   const saldo = metaAtual.metaDiaria - prodAcumulada;
@@ -1514,7 +1514,10 @@ function carregarProducaoCache(cb) {
   call('producao', {}, d => {
     if (d.ok) { producaoCache = d; }
     cb(producaoCache);
-    if (producaoCache && metaAtual) atualizarMetaSemanal();
+    if (producaoCache && metaAtual) {
+      atualizarMetaSemanal();
+      atualizarMetaScores(); // Atualiza badges com produção real
+    }
   });
 }
 
@@ -1720,9 +1723,29 @@ function calcMetaScore() {
 function atualizarMetaScores() {
   if (!metaAtual || !metaAtual.metaDiaria) return;
   const score = calcMetaScore();
-  // Atualiza todos os badges visíveis
-  document.querySelectorAll('.meta-score-badge').forEach(el => {
-    el.textContent = '🎯 ' + score + ' pts';
+  // Atualiza todos os badges visíveis — agora com produção real individual
+  team.forEach(emp => {
+    const ne = enc(emp.nome);
+    const badge = document.getElementById('msb-' + ne);
+    if (!badge) return;
+    const s = state[emp.nome];
+    if (!s || s.ocupacao !== 'Rampa') return;
+
+    let txt = '🎯 ' + score + ' pts';
+    // Se tem producaoCache, mostra pts reais do mecânico
+    if (producaoCache && emp.email) {
+      const p = producaoCache.porEmail[emp.email.toLowerCase()];
+      if (p) {
+        const feito = p.pontuacao_hoje || 0;
+        if (feito > 0) {
+          const atingiu = feito >= score;
+          txt = '🎯 ' + score + ' | ' + (atingiu ? '✅' : '🔸') + ' ' + feito + ' pts';
+          badge.classList.toggle('atingido', atingiu);
+          badge.classList.toggle('negativo', !atingiu && feito < score * 0.5);
+        }
+      }
+    }
+    badge.textContent = txt;
   });
   // Atualiza o painel lateral também
   atualizarMetaRampa();

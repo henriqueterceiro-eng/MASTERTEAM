@@ -600,6 +600,29 @@ const SC = {'Presente':'s-pres','Atraso +15min':'s-atra','Faltou':'s-falt','Afas
 const COM_OCUP    = ['Presente','Atraso +15min'];
 const COM_PERIODO = ['Afastado','Férias'];
 
+function parseAdmDate(emp) {
+  if (!emp.admissao) return null;
+  const adm = emp.admissao;
+  if (typeof adm === 'string' && adm.includes('/')) {
+    const parts = adm.split('/');
+    return new Date(Number(parts[2]), Number(parts[1])-1, Number(parts[0]));
+  }
+  const d = new Date(adm);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function teamParaData() {
+  const dv = document.getElementById('inp-data').value;
+  if (!dv) return team;
+  const [y,m,d] = dv.split('-');
+  const dataSel = new Date(Number(y), Number(m)-1, Number(d));
+  return team.filter(emp => {
+    const adm = parseAdmDate(emp);
+    if (!adm) return true; // sem data de admissão = mostra sempre
+    return adm <= dataSel;
+  });
+}
+
 function isEmTreinamento(emp) {
   if (!emp.admissao) return false;
   const adm = emp.admissao;
@@ -1202,12 +1225,13 @@ function renderTable() {
   const search=document.getElementById('search').value.toLowerCase();
   const fs=document.getElementById('filter-st').value;
   const sup=document.getElementById('sel-sup').value;
-  const list=team.filter(emp=>{
+  const teamAtivo = teamParaData();
+  const list=teamAtivo.filter(emp=>{
     if(search&&!emp.nome.toLowerCase().includes(search))return false;
     if(fs){const s=state[emp.nome]?.status||'';if(fs!==s)return false;}
     return true;
   });
-  document.getElementById('toolbar-title').textContent=`CHAMADA — ${sup} (${team.length})`;
+  document.getElementById('toolbar-title').textContent=`CHAMADA — ${sup} (${teamAtivo.length})`;
   if(!list.length){document.getElementById('tbody').innerHTML='<tr class="empty-row"><td colspan="7">Nenhum resultado</td></tr>';updateStats();return;}
   const dv=document.getElementById('inp-data').value;
   let html='';
@@ -1333,7 +1357,7 @@ function onPeriod(inp){const nome=dec(inp.dataset.nome);if(!state[nome])state[no
 function onObs(inp){const nome=dec(inp.dataset.nome);if(!state[nome])state[nome]={};state[nome].obs=inp.value;markDirty();}
 
 function markAll(status){
-  team.forEach(emp=>{
+  teamParaData().forEach(emp=>{
     if(!state[emp.nome])state[emp.nome]={};
     state[emp.nome].status=status;
     if(!COM_OCUP.includes(status))state[emp.nome].ocupacao='';
@@ -1345,7 +1369,7 @@ function markAll(status){
 function updateStats(){
   let pres=0,atra=0,falt=0,afas=0,fer=0,folg=0,trein=0;
   const ocupC={};
-  team.forEach(emp=>{
+  teamParaData().forEach(emp=>{
     if(isEmTreinamento(emp))trein++;
     const s=state[emp.nome]?.status||'';
     if(s==='Presente')pres++;
@@ -1379,7 +1403,7 @@ async function salvar(){
   if(!dv){toast('⚠️ Selecione a data!');return;}
   const ds=toDisp(dv);
   const chamada=[], periodos=[];
-  team.forEach(emp=>{
+  teamParaData().forEach(emp=>{
     const s=state[emp.nome];
     if(!s?.status)return;
     if(s.externo)return; // período salvo por outro supervisor — não sobrescrever
@@ -1594,7 +1618,7 @@ function atualizarMetaRampa() {
   let rampaCount = 0;
   let prodAcumulada = 0;
 
-  team.forEach(emp => {
+  teamParaData().forEach(emp => {
     const s = state[emp.nome];
     if (!s || !COM_PRES.includes(s.status)) return;
     if (s.ocupacao === 'Rampa') rampaCount++;
@@ -1879,7 +1903,7 @@ function calcMetaScore() {
   // Conta quantos mecânicos estão na Rampa agora
   const COM_OCUP = ['Presente','Atraso +15min'];
   let rampaCount = 0;
-  team.forEach(emp => {
+  teamParaData().forEach(emp => {
     const s = state[emp.nome];
     if (s && COM_OCUP.includes(s.status) && s.ocupacao === 'Rampa') rampaCount++;
   });
@@ -1890,7 +1914,7 @@ function calcMetaScore() {
 function atualizarMetaScores() {
   const score = (metaAtual && metaAtual.metaDiaria) ? calcMetaScore() : null;
 
-  team.forEach(emp => {
+  teamParaData().forEach(emp => {
     const ne = enc(emp.nome);
     const badge = document.getElementById('msb-' + ne);
     if (!badge) return;

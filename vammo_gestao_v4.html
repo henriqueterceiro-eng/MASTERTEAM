@@ -1714,7 +1714,6 @@ function loadMetas() {
   if (!div) return;
   div.innerHTML = '<div class="spinner" style="margin:40px auto;"></div>';
 
-  // Carrega turnos e metas em paralelo
   Promise.all([
     new Promise(r => call('turnos', {}, d => r(d.turnos || []))),
     new Promise(r => call('getMetas', {}, d => r(d.metas || {})))
@@ -1729,63 +1728,161 @@ function loadMetas() {
       { val: '6x1', label: '6×1 — Seg a Sáb (sáb. meio período)' },
       { val: '5x2', label: '5×2 — Seg a Sex' },
     ];
+    const DIAS = ['seg','ter','qua','qui','sex','sab'];
+    const DIAS_LABEL = ['SEG','TER','QUA','QUI','SEX','SÁB'];
 
     div.innerHTML = turnos.map(t => {
-      const m = metas[t.id] || { meta: 0, escala: '6x1' };
-      // 6x1: 5 dias cheios + sábado meio período = 5.5 dias equivalentes
-      const diasSemana = m.escala === '5x2' ? 5 : 5.5;
-      const metaDia = m.meta > 0 ? Math.round(m.meta / diasSemana) : 0;
+      const m = metas[t.id] || { meta: 0, escala: '6x1', dias: {} };
+      const dias = m.dias || {};
+      const metaVal = m.meta || 0;
 
-      return `<div style="background:var(--white);border:1px solid var(--b1);border-radius:12px;padding:20px;margin-bottom:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-          <div>
-            <div style="font-weight:700;font-size:15px;">${t.nome}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Base: ${t.base || '—'}</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:11px;color:var(--muted);">Meta diária estimada</div>
-            <div style="font-size:24px;font-weight:900;color:var(--blue);" id="meta-dia-${t.id}">${metaDia > 0 ? metaDia + ' pts' : '—'}</div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;">META SEMANAL (pontos)</div>
-            <input type="number" id="meta-val-${t.id}" value="${m.meta || ''}" placeholder="Ex: 500"
-              min="0" style="width:100%;"
-              oninput="calcMetaDia('${t.id}')">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;">ESCALA</div>
-            <select id="meta-esc-${t.id}" style="width:100%;" onchange="calcMetaDia('${t.id}')">
-              ${ESCALAS.map(e => `<option value="${e.val}" ${m.escala===e.val?'selected':''}>${e.label}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div style="margin-top:12px;display:flex;justify-content:flex-end;">
-          <button class="btn btn-blue btn-sm" onclick="salvarMeta('${t.id}')">💾 Salvar meta</button>
-        </div>
-      </div>`;
+      // Se não tem dias configurados, calcula distribuição automática
+      const somaDias = DIAS.reduce((s,d) => s + (Number(dias[d]) || 0), 0);
+      let diasVals = {};
+      if (somaDias === 0 && metaVal > 0) {
+        const eq = m.escala === '5x2' ? 5 : 5.5;
+        const porDia = Math.round(metaVal / eq);
+        DIAS.forEach(d => diasVals[d] = d === 'sab' && m.escala === '5x2' ? 0 : d === 'sab' ? Math.round(porDia * 0.5) : porDia);
+      } else {
+        DIAS.forEach(d => diasVals[d] = Number(dias[d]) || 0);
+      }
+      const somaCalc = DIAS.reduce((s,d) => s + diasVals[d], 0);
+
+      return '<div style="background:var(--white);border:1px solid var(--b1);border-radius:12px;padding:20px;margin-bottom:16px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">' +
+          '<div>' +
+            '<div style="font-weight:700;font-size:15px;">' + t.nome + '</div>' +
+            '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Base: ' + (t.base || '—') + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<div style="font-size:11px;color:var(--muted);">Soma dos dias</div>' +
+            '<div style="font-size:24px;font-weight:900;color:' + (somaCalc === metaVal ? 'var(--green)' : 'var(--red)') + ';" id="meta-soma-' + t.id + '">' + somaCalc + ' pts</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+          '<div>' +
+            '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;">META SEMANAL (pontos)</div>' +
+            '<input type="number" id="meta-val-' + t.id + '" value="' + (metaVal || '') + '" placeholder="Ex: 3920" min="0" style="width:100%;" oninput="distribuirMeta(\'' + t.id + '\')">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;">ESCALA</div>' +
+            '<select id="meta-esc-' + t.id + '" style="width:100%;" onchange="distribuirMeta(\'' + t.id + '\')">' +
+              ESCALAS.map(e => '<option value="' + e.val + '" ' + (m.escala===e.val?'selected':'') + '>' + e.label + '</option>').join('') +
+            '</select>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:var(--bg);border:1px solid var(--b1);border-radius:10px;padding:14px;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+            '<div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;">Distribuição por dia</div>' +
+            '<button class="btn btn-ghost btn-sm" onclick="distribuirMeta(\'' + t.id + '\')" style="font-size:10px;">🔄 Redistribuir</button>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;text-align:center;">' +
+            DIAS_LABEL.map((label,i) =>
+              '<div>' +
+                '<div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:4px;letter-spacing:1px;">' + label + '</div>' +
+                '<input type="number" id="meta-' + DIAS[i] + '-' + t.id + '" value="' + diasVals[DIAS[i]] + '" min="0" style="width:100%;text-align:center;font-weight:700;font-size:14px;padding:8px 4px;" oninput="recalcSoma(\'' + t.id + '\')">' +
+              '</div>'
+            ).join('') +
+            '<div>' +
+              '<div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:4px;letter-spacing:1px;">DOM</div>' +
+              '<input type="number" value="0" disabled style="width:100%;text-align:center;font-weight:700;font-size:14px;padding:8px 4px;opacity:.4;cursor:not-allowed;">' +
+            '</div>' +
+          '</div>' +
+          '<div id="meta-alerta-' + t.id + '" style="display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:600;"></div>' +
+        '</div>' +
+        '<div style="margin-top:12px;display:flex;justify-content:flex-end;">' +
+          '<button class="btn btn-blue btn-sm" onclick="salvarMeta(\'' + t.id + '\')">💾 Salvar meta</button>' +
+        '</div>' +
+      '</div>';
     }).join('');
   });
 }
 
-function calcMetaDia(turnoId) {
+function distribuirMeta(turnoId) {
   const meta = Number(document.getElementById('meta-val-' + turnoId)?.value) || 0;
   const esc  = document.getElementById('meta-esc-' + turnoId)?.value || '6x1';
-  // 6x1: 5 dias cheios + sábado meio período = 5.5 dias equivalentes
-  const dias = esc === '5x2' ? 5 : 5.5;
-  const dia  = meta > 0 ? Math.round(meta / dias) : 0;
-  const el   = document.getElementById('meta-dia-' + turnoId);
-  if (el) el.textContent = dia > 0 ? dia + ' pts' : '—';
+  const DIAS = ['seg','ter','qua','qui','sex','sab'];
+
+  if (meta <= 0) {
+    DIAS.forEach(d => { var el = document.getElementById('meta-' + d + '-' + turnoId); if (el) el.value = 0; });
+    recalcSoma(turnoId);
+    return;
+  }
+
+  if (esc === '5x2') {
+    var porDia = Math.round(meta / 5);
+    ['seg','ter','qua','qui','sex'].forEach(d => { document.getElementById('meta-' + d + '-' + turnoId).value = porDia; });
+    document.getElementById('meta-sab-' + turnoId).value = 0;
+  } else {
+    var porDia = Math.round(meta / 5.5);
+    var sabVal = Math.round(porDia * 0.5);
+    ['seg','ter','qua','qui','sex'].forEach(d => { document.getElementById('meta-' + d + '-' + turnoId).value = porDia; });
+    document.getElementById('meta-sab-' + turnoId).value = sabVal;
+  }
+
+  // Ajusta pra bater exato com a meta semanal
+  var soma = 0;
+  DIAS.forEach(d => { soma += Number(document.getElementById('meta-' + d + '-' + turnoId).value) || 0; });
+  var diff = meta - soma;
+  if (diff !== 0) {
+    var el = document.getElementById('meta-seg-' + turnoId);
+    el.value = Number(el.value) + diff;
+  }
+  recalcSoma(turnoId);
 }
+
+function recalcSoma(turnoId) {
+  const DIAS = ['seg','ter','qua','qui','sex','sab'];
+  const meta = Number(document.getElementById('meta-val-' + turnoId)?.value) || 0;
+  let soma = 0;
+  DIAS.forEach(d => { soma += Number(document.getElementById('meta-' + d + '-' + turnoId)?.value) || 0; });
+
+  const somaEl = document.getElementById('meta-soma-' + turnoId);
+  const alertaEl = document.getElementById('meta-alerta-' + turnoId);
+
+  if (somaEl) {
+    somaEl.textContent = soma + ' pts';
+    somaEl.style.color = soma === meta ? 'var(--green)' : 'var(--red)';
+  }
+  if (alertaEl) {
+    var diff = meta - soma;
+    if (diff !== 0 && meta > 0) {
+      alertaEl.style.display = 'block';
+      if (diff > 0) {
+        alertaEl.style.background = 'var(--orange-d)';
+        alertaEl.style.border = '1px solid rgba(255,140,0,.3)';
+        alertaEl.style.color = 'var(--orange)';
+        alertaEl.textContent = '⚠️ Faltam ' + diff + ' pts para completar a meta semanal';
+      } else {
+        alertaEl.style.background = 'var(--red-d)';
+        alertaEl.style.border = '1px solid rgba(242,53,87,.3)';
+        alertaEl.style.color = 'var(--red)';
+        alertaEl.textContent = '⚠️ Excede a meta semanal em ' + Math.abs(diff) + ' pts';
+      }
+    } else {
+      alertaEl.style.display = 'none';
+    }
+  }
+}
+
+function calcMetaDia(turnoId) { recalcSoma(turnoId); }
 
 function salvarMeta(turnoId) {
   const meta = Number(document.getElementById('meta-val-' + turnoId)?.value) || 0;
   const esc  = document.getElementById('meta-esc-' + turnoId)?.value || '6x1';
-  call('setMeta', { turnoId, meta, escala: esc }, d => {
+  const DIAS = ['seg','ter','qua','qui','sex','sab'];
+  const params = { turnoId: turnoId, meta: meta, escala: esc };
+  DIAS.forEach(d => { params[d] = Number(document.getElementById('meta-' + d + '-' + turnoId)?.value) || 0; });
+
+  var soma = DIAS.reduce((s,d) => s + params[d], 0);
+  if (meta > 0 && soma !== meta) {
+    if (!confirm('A soma dos dias (' + soma + ') não bate com a meta semanal (' + meta + '). Salvar mesmo assim?')) return;
+  }
+
+  call('setMeta', params, d => {
     if (d.error) { toast('❌ ' + d.error); return; }
-    metasData[turnoId] = { meta, escala: esc, metaDiaria: Math.round(meta / (esc === '5x2' ? 5 : 6)) };
-    toast('✅ Meta do turno salva!');
+    metasData[turnoId] = { meta: meta, escala: esc, dias: params };
+    toast('✅ Meta do turno salva com distribuição por dia!');
   });
 }
 

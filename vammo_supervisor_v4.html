@@ -336,6 +336,31 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
       </div>
     </div>
 
+    <!-- PAINEL K2K — MOTOS +120min -->
+    <div class="sb-sec" id="k2k-panel" style="display:none;">
+      <div class="sb-lbl">⏱️ K2K — Tempo na oficina</div>
+      <!-- Alerta de hoje -->
+      <div id="k2k-alerta" style="border-radius:10px;padding:12px;text-align:center;margin-bottom:8px;border:1px solid var(--b1);background:var(--white);">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Motos +120 min hoje</div>
+        <div style="display:flex;justify-content:center;align-items:baseline;gap:8px;">
+          <span style="font-size:32px;font-weight:900;" id="k2k-total120">—</span>
+          <span style="font-size:13px;font-weight:700;" id="k2k-pct120"></span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;" id="k2k-detalhe"></div>
+      </div>
+      <!-- Barras por faixa -->
+      <div style="background:var(--white);border:1px solid var(--b1);border-radius:10px;padding:10px;margin-bottom:8px;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Distribuição hoje</div>
+        <div id="k2k-bars"></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;" id="k2k-total-ref"></div>
+      </div>
+      <!-- Mini histórico -->
+      <div style="background:var(--white);border:1px solid var(--b1);border-radius:10px;padding:10px;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Últimos dias — % acima 120min</div>
+        <div id="k2k-hist" style="display:flex;gap:3px;align-items:flex-end;height:50px;"></div>
+      </div>
+    </div>
+
     <div class="sb-sec">
       <div class="sb-lbl">Ações rápidas</div>
       <div class="quick-btns">
@@ -1084,6 +1109,7 @@ function onSupChange() {
   if (!sup) return;
   loadTeam();
   carregarMetaSupervisor(sup);
+  carregarK2K();
 }
 function onDateChange() {
   producaoCache = null; // Limpa cache para recarregar da fonte correta (live vs histórico)
@@ -1470,6 +1496,84 @@ function carregarMetaSupervisor(supNome) {
       });
     });
   });
+}
+
+// ─── K2K — TEMPO NA OFICINA ───────────────────────────────────
+function carregarK2K() {
+  const panel = document.getElementById('k2k-panel');
+  if (!panel) return;
+  // Precisa do turnoSup para saber qual query buscar
+  const supSel = document.getElementById('sel-sup').value;
+  if (!supSel) { panel.style.display = 'none'; return; }
+  // Busca turno do supervisor
+  call('supervisores', {}, function(d) {
+    if (!d.supervisores) { panel.style.display = 'none'; return; }
+    const sup = d.supervisores.find(function(s) { return s.nome === supSel; });
+    if (!sup || !sup.turno) { panel.style.display = 'none'; return; }
+    call('k2k', { turno: sup.turno }, function(k) {
+      if (!k.ok || !k.hoje) { panel.style.display = 'none'; return; }
+      panel.style.display = '';
+      renderK2K(k);
+    });
+  });
+}
+
+function renderK2K(k) {
+  var h = k.hoje;
+  var totalEl = document.getElementById('k2k-total120');
+  var pctEl = document.getElementById('k2k-pct120');
+  var detEl = document.getElementById('k2k-detalhe');
+  var alertBox = document.getElementById('k2k-alerta');
+
+  // Cor do alerta baseado no % acima de 120min
+  var pct = h.pctAcima120;
+  var cor, bg, brd;
+  if (pct >= 40) { cor = 'var(--red)'; bg = 'var(--red-d,#fff5f5)'; brd = 'rgba(242,53,87,.3)'; }
+  else if (pct >= 25) { cor = 'var(--yellow,#f5a623)'; bg = '#fffbe6'; brd = 'rgba(245,166,35,.3)'; }
+  else { cor = 'var(--green)'; bg = 'var(--green-d,#f0fff4)'; brd = 'rgba(0,200,83,.3)'; }
+
+  totalEl.textContent = h.acima120;
+  totalEl.style.color = cor;
+  pctEl.textContent = pct + '% do total';
+  pctEl.style.color = cor;
+  detEl.textContent = h.de121a180 + ' de 121–180min  ·  ' + h.maior180 + ' acima de 180min';
+  alertBox.style.background = bg;
+  alertBox.style.borderColor = brd;
+
+  // Barras de distribuição
+  var barsEl = document.getElementById('k2k-bars');
+  var total = h.total || 1;
+  var faixas = [
+    { label: '≤ 60 min', val: h.ate60, cor: '#00c853' },
+    { label: '61–120 min', val: h.de61a120, cor: '#2EC2FF' },
+    { label: '121–180 min', val: h.de121a180, cor: '#f5a623' },
+    { label: '> 180 min', val: h.maior180, cor: '#f23557' }
+  ];
+  barsEl.innerHTML = faixas.map(function(f) {
+    var w = Math.round(f.val / total * 100);
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
+      '<span style="font-size:10px;color:var(--muted);width:75px;text-align:right;">' + f.label + '</span>' +
+      '<div style="flex:1;background:var(--bg);border-radius:4px;height:14px;overflow:hidden;">' +
+        '<div style="height:100%;width:' + w + '%;background:' + f.cor + ';border-radius:4px;transition:width .5s;"></div>' +
+      '</div>' +
+      '<span style="font-size:11px;font-weight:700;width:28px;text-align:right;">' + f.val + '</span>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('k2k-total-ref').textContent = 'Total: ' + h.total + ' motos · ' + k.atualizadoEm;
+
+  // Mini histórico — barras verticais
+  var histEl = document.getElementById('k2k-hist');
+  var maxPct = Math.max.apply(null, k.historico.map(function(d) { return d.pctAcima120; }).concat([10]));
+  histEl.innerHTML = k.historico.map(function(d) {
+    var barH = Math.max(4, Math.round(d.pctAcima120 / maxPct * 45));
+    var barCor = d.pctAcima120 >= 40 ? '#f23557' : d.pctAcima120 >= 25 ? '#f5a623' : '#00c853';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">' +
+      '<span style="font-size:9px;font-weight:700;color:' + barCor + ';">' + d.pctAcima120 + '%</span>' +
+      '<div style="width:100%;height:' + barH + 'px;background:' + barCor + ';border-radius:3px;"></div>' +
+      '<span style="font-size:8px;color:var(--muted);">' + d.dia + '</span>' +
+    '</div>';
+  }).join('');
 }
 
 function atualizarMetaRampa() {

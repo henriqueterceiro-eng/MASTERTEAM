@@ -302,6 +302,13 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
               <button class="preset" id="ps-8" onclick="setChartPreset(8,this)">8 sem</button>
             </div>
             <div style="width:1px;height:16px;background:var(--b2);"></div>
+            <!-- Período específico -->
+            <div style="display:flex;gap:4px;align-items:center;">
+              <input type="date" id="chart-ini" style="padding:4px 8px;font-size:11px;width:120px;" onchange="onChartPeriodo()">
+              <span style="font-size:10px;color:var(--muted);">até</span>
+              <input type="date" id="chart-fim" style="padding:4px 8px;font-size:11px;width:120px;" onchange="onChartPeriodo()">
+            </div>
+            <div style="width:1px;height:16px;background:var(--b2);"></div>
             <!-- Toggle Total / Ajustado -->
             <div style="display:flex;gap:4px;">
               <button class="preset active" id="mode-total" onclick="setChartMode('total',this)" style="border-color:var(--blue);color:var(--blue);background:var(--blue-d);">Total</button>
@@ -1544,9 +1551,16 @@ let chartData    = [];
 let chartLoading = false;
 let chartSemanas = 8;
 let chartMode    = 'total';
+let chartUsaPeriodo = false;
 
 function setChartPreset(n, btn) {
   chartSemanas = n;
+  chartUsaPeriodo = false;
+  // Limpa inputs de período
+  var iniEl = document.getElementById('chart-ini');
+  var fimEl = document.getElementById('chart-fim');
+  if (iniEl) iniEl.value = '';
+  if (fimEl) fimEl.value = '';
   ['ps-1','ps-4','ps-8'].forEach(id => {
     const el=document.getElementById(id);
     el.classList.remove('active');
@@ -1554,6 +1568,21 @@ function setChartPreset(n, btn) {
   });
   btn.style.borderColor='var(--blue)'; btn.style.color='var(--blue)'; btn.style.background='var(--blue-d)';
   loadChart();
+}
+
+function onChartPeriodo() {
+  var ini = document.getElementById('chart-ini').value;
+  var fim = document.getElementById('chart-fim').value;
+  if (ini && fim) {
+    chartUsaPeriodo = true;
+    // Desativa presets
+    ['ps-1','ps-4','ps-8'].forEach(id => {
+      var el = document.getElementById(id);
+      el.classList.remove('active');
+      el.style.borderColor=''; el.style.color=''; el.style.background='';
+    });
+    loadChart();
+  }
 }
 
 function setChartMode(mode, btn) {
@@ -1581,7 +1610,21 @@ function loadChart() {
     loadEl.innerHTML = '<span style="font-size:11px;color:var(--muted)">⚠️ Timeout — redeploye o Apps Script</span>';
   }, 14000);
 
-  call('absenteismoSemanal', { semanas: chartSemanas, supervisor: sup, turno: 'Todos' }, d => {
+  var params = { supervisor: sup, turno: 'Todos' };
+  if (chartUsaPeriodo) {
+    var ini = document.getElementById('chart-ini').value;
+    var fim = document.getElementById('chart-fim').value;
+    if (ini && fim) {
+      params.inicio = toDisp(ini);
+      params.fim = toDisp(fim);
+    } else {
+      params.semanas = chartSemanas;
+    }
+  } else {
+    params.semanas = chartSemanas;
+  }
+
+  call('absenteismoSemanal', params, d => {
     clearTimeout(timer);
     chartLoading = false;
     if (d.error || !d.semanas) {

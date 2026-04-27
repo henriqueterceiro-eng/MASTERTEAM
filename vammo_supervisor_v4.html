@@ -208,6 +208,9 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
 .meta-score-badge.atingido{background:var(--green-d);color:var(--green);border-color:rgba(0,200,83,.3);}
 .meta-score-badge.negativo{background:var(--red-d);color:var(--red);border-color:rgba(242,53,87,.3);}
 .star-badge{font-size:13px;cursor:help;}
+@keyframes k2k-pulse{0%,100%{opacity:1;}50%{opacity:.85;}}
+.k2k-critical{animation:k2k-pulse 1.5s ease-in-out infinite;}
+.k2k-warn{animation:k2k-pulse 3s ease-in-out infinite;}
 .tick-item.warn .tick-val{color:#FFCC00;text-shadow:0 0 10px #FFCC00,0 0 20px #AA8800;}
 .tick-chg{font-size:13px;font-weight:900;padding:2px 7px;border-radius:2px;letter-spacing:1px;font-family:'Courier New',monospace;}
 .tick-chg.up{background:#CC0000;color:#FFFFFF;}
@@ -336,31 +339,6 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
       </div>
     </div>
 
-    <!-- PAINEL K2K — MOTOS +120min -->
-    <div class="sb-sec" id="k2k-panel" style="display:none;">
-      <div class="sb-lbl">⏱️ K2K — Tempo na oficina</div>
-      <!-- Alerta de hoje -->
-      <div id="k2k-alerta" style="border-radius:10px;padding:12px;text-align:center;margin-bottom:8px;border:1px solid var(--b1);background:var(--white);">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Motos +120 min hoje</div>
-        <div style="display:flex;justify-content:center;align-items:baseline;gap:8px;">
-          <span style="font-size:32px;font-weight:900;" id="k2k-total120">—</span>
-          <span style="font-size:13px;font-weight:700;" id="k2k-pct120"></span>
-        </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px;" id="k2k-detalhe"></div>
-      </div>
-      <!-- Barras por faixa -->
-      <div style="background:var(--white);border:1px solid var(--b1);border-radius:10px;padding:10px;margin-bottom:8px;">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Distribuição hoje</div>
-        <div id="k2k-bars"></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:6px;" id="k2k-total-ref"></div>
-      </div>
-      <!-- Mini histórico -->
-      <div style="background:var(--white);border:1px solid var(--b1);border-radius:10px;padding:10px;">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Últimos dias — % acima 120min</div>
-        <div id="k2k-hist" style="display:flex;gap:3px;align-items:flex-end;height:50px;"></div>
-      </div>
-    </div>
-
     <div class="sb-sec">
       <div class="sb-lbl">Ações rápidas</div>
       <div class="quick-btns">
@@ -388,6 +366,33 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
         <option value="Atraso +15min">⏰ Atrasos</option>
         <option value="Faltou">❌ Faltas</option>
       </select>
+    </div>
+
+    <!-- K2K BANNER — ALERTA DE MOTOS ACIMA DE 120min -->
+    <div id="k2k-panel" style="display:none;padding:0 16px;">
+      <div id="k2k-banner" style="border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <!-- Número grande -->
+        <div style="text-align:center;min-width:90px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.7;" id="k2k-label">⏱️ MOTOS +120min</div>
+          <div style="font-size:42px;font-weight:900;line-height:1;" id="k2k-total120">—</div>
+        </div>
+        <!-- Separador -->
+        <div style="width:1px;height:50px;background:rgba(255,255,255,.2);"></div>
+        <!-- Detalhe -->
+        <div style="flex:1;min-width:200px;">
+          <div style="display:flex;gap:20px;margin-bottom:6px;">
+            <span style="font-size:13px;font-weight:700;" id="k2k-pct120"></span>
+            <span style="font-size:12px;opacity:.8;" id="k2k-detalhe"></span>
+          </div>
+          <!-- Barra de distribuição inline -->
+          <div id="k2k-distrib" style="display:flex;height:18px;border-radius:6px;overflow:hidden;gap:2px;"></div>
+          <div style="display:flex;gap:10px;margin-top:5px;font-size:10px;opacity:.7;" id="k2k-legenda"></div>
+        </div>
+        <!-- Mini histórico -->
+        <div style="display:flex;gap:3px;align-items:flex-end;height:45px;min-width:120px;" id="k2k-hist"></div>
+        <!-- Atualização -->
+        <div style="font-size:9px;opacity:.5;" id="k2k-total-ref"></div>
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -1520,58 +1525,58 @@ function carregarK2K() {
 
 function renderK2K(k) {
   var h = k.hoje;
-  var totalEl = document.getElementById('k2k-total120');
-  var pctEl = document.getElementById('k2k-pct120');
-  var detEl = document.getElementById('k2k-detalhe');
-  var alertBox = document.getElementById('k2k-alerta');
+  var banner = document.getElementById('k2k-banner');
 
-  // Cor do alerta baseado no % acima de 120min
+  // Cor e intensidade baseado no % acima de 120min
   var pct = h.pctAcima120;
-  var cor, bg, brd;
-  if (pct >= 40) { cor = 'var(--red)'; bg = 'var(--red-d,#fff5f5)'; brd = 'rgba(242,53,87,.3)'; }
-  else if (pct >= 25) { cor = 'var(--yellow,#f5a623)'; bg = '#fffbe6'; brd = 'rgba(245,166,35,.3)'; }
-  else { cor = 'var(--green)'; bg = 'var(--green-d,#f0fff4)'; brd = 'rgba(0,200,83,.3)'; }
+  var bg, txtCor, cls;
+  if (pct >= 40) {
+    bg = 'linear-gradient(135deg,#d32f2f,#f23557)'; txtCor = '#fff'; cls = 'k2k-critical';
+  } else if (pct >= 25) {
+    bg = 'linear-gradient(135deg,#e65100,#f5a623)'; txtCor = '#fff'; cls = 'k2k-warn';
+  } else {
+    bg = 'linear-gradient(135deg,#1b5e20,#00c853)'; txtCor = '#fff'; cls = '';
+  }
 
-  totalEl.textContent = h.acima120;
-  totalEl.style.color = cor;
-  pctEl.textContent = pct + '% do total';
-  pctEl.style.color = cor;
-  detEl.textContent = h.de121a180 + ' de 121–180min  ·  ' + h.maior180 + ' acima de 180min';
-  alertBox.style.background = bg;
-  alertBox.style.borderColor = brd;
+  banner.style.background = bg;
+  banner.style.color = txtCor;
+  banner.className = cls;
 
-  // Barras de distribuição
-  var barsEl = document.getElementById('k2k-bars');
+  document.getElementById('k2k-total120').textContent = h.acima120;
+  document.getElementById('k2k-pct120').textContent = pct + '% acima de 120min';
+  document.getElementById('k2k-detalhe').textContent = '🔸 ' + h.de121a180 + ' de 121–180min  ·  🔴 ' + h.maior180 + ' acima 180min';
+
+  // Barra de distribuição stacked
   var total = h.total || 1;
   var faixas = [
-    { label: '≤ 60 min', val: h.ate60, cor: '#00c853' },
-    { label: '61–120 min', val: h.de61a120, cor: '#2EC2FF' },
-    { label: '121–180 min', val: h.de121a180, cor: '#f5a623' },
-    { label: '> 180 min', val: h.maior180, cor: '#f23557' }
+    { label: '≤60', val: h.ate60, cor: '#4caf50' },
+    { label: '61–120', val: h.de61a120, cor: '#2EC2FF' },
+    { label: '121–180', val: h.de121a180, cor: '#ff9800' },
+    { label: '>180', val: h.maior180, cor: '#f44336' }
   ];
-  barsEl.innerHTML = faixas.map(function(f) {
-    var w = Math.round(f.val / total * 100);
-    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
-      '<span style="font-size:10px;color:var(--muted);width:75px;text-align:right;">' + f.label + '</span>' +
-      '<div style="flex:1;background:var(--bg);border-radius:4px;height:14px;overflow:hidden;">' +
-        '<div style="height:100%;width:' + w + '%;background:' + f.cor + ';border-radius:4px;transition:width .5s;"></div>' +
-      '</div>' +
-      '<span style="font-size:11px;font-weight:700;width:28px;text-align:right;">' + f.val + '</span>' +
-    '</div>';
+  var distrib = document.getElementById('k2k-distrib');
+  distrib.innerHTML = faixas.map(function(f) {
+    var w = Math.max(f.val > 0 ? 3 : 0, Math.round(f.val / total * 100));
+    return '<div style="width:' + w + '%;background:' + f.cor + ';border-radius:3px;transition:width .5s;" title="' + f.label + ': ' + f.val + '"></div>';
   }).join('');
 
-  document.getElementById('k2k-total-ref').textContent = 'Total: ' + h.total + ' motos · ' + k.atualizadoEm;
+  var legEl = document.getElementById('k2k-legenda');
+  legEl.innerHTML = faixas.map(function(f) {
+    return '<span>⬤ ' + f.label + ': ' + f.val + '</span>';
+  }).join('');
 
-  // Mini histórico — barras verticais
+  document.getElementById('k2k-total-ref').textContent = h.total + ' motos · ' + k.atualizadoEm;
+
+  // Mini histórico
   var histEl = document.getElementById('k2k-hist');
   var maxPct = Math.max.apply(null, k.historico.map(function(d) { return d.pctAcima120; }).concat([10]));
   histEl.innerHTML = k.historico.map(function(d) {
-    var barH = Math.max(4, Math.round(d.pctAcima120 / maxPct * 45));
-    var barCor = d.pctAcima120 >= 40 ? '#f23557' : d.pctAcima120 >= 25 ? '#f5a623' : '#00c853';
+    var barH = Math.max(4, Math.round(d.pctAcima120 / maxPct * 40));
+    var barCor = d.pctAcima120 >= 40 ? '#fff' : d.pctAcima120 >= 25 ? 'rgba(255,255,255,.8)' : 'rgba(255,255,255,.6)';
     return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">' +
-      '<span style="font-size:9px;font-weight:700;color:' + barCor + ';">' + d.pctAcima120 + '%</span>' +
-      '<div style="width:100%;height:' + barH + 'px;background:' + barCor + ';border-radius:3px;"></div>' +
-      '<span style="font-size:8px;color:var(--muted);">' + d.dia + '</span>' +
+      '<span style="font-size:9px;font-weight:700;">' + d.pctAcima120 + '%</span>' +
+      '<div style="width:100%;height:' + barH + 'px;background:' + barCor + ';border-radius:3px;opacity:.8;"></div>' +
+      '<span style="font-size:8px;opacity:.6;">' + d.dia + '</span>' +
     '</div>';
   }).join('');
 }

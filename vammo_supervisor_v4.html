@@ -1085,6 +1085,7 @@ function onSupChange() {
 }
 function onDateChange() {
   producaoCache = null; // Limpa cache para recarregar da fonte correta (live vs histórico)
+  clearInterval(producaoTimer);
   const dv = document.getElementById('inp-data').value;
   if (dv) updateSbDate(new Date(dv+'T12:00:00'));
   if (team.length > 0) loadPresencas();
@@ -1153,6 +1154,8 @@ function loadPresencas() {
     dirty=false;
     setIndic('ok',hasAny?'Carregado':'Padrão: todos presentes');
     renderTable();
+    // Garante que produção carrega depois das presenças
+    carregarProducaoCache(function(){});
   });
 }
 
@@ -1518,9 +1521,10 @@ function atualizarMetaRampa() {
 // PRODUÇÃO REAL — integração Metabase por email
 // ══════════════════════════════════════════════════
 let producaoCache = null;  // { porEmail: {...} }
+let producaoTimer = null;
 
-function carregarProducaoCache(cb) {
-  if (producaoCache) { cb(producaoCache); return; }
+function carregarProducaoCache(cb, forceReload) {
+  if (producaoCache && !forceReload) { cb(producaoCache); return; }
 
   const dv = document.getElementById('inp-data').value; // yyyy-MM-dd
   const hoje = fmtIn(new Date());
@@ -1536,7 +1540,15 @@ function carregarProducaoCache(cb) {
         atualizarMetaScores();
       }
     });
+    // Auto-refresh a cada 5 min (só pra hoje)
+    clearInterval(producaoTimer);
+    producaoTimer = setInterval(() => {
+      call('producao', {}, d => {
+        if (d.ok) { producaoCache = d; producaoCache._fonte = 'live'; atualizarMetaScores(); }
+      });
+    }, 5 * 60 * 1000);
   } else {
+    clearInterval(producaoTimer);
     // Dia passado → ProducaoHistorico (snapshot das 23h)
     const ds = toDisp(dv); // dd/MM/yyyy
     call('producaoDia', { data: ds }, d => {
@@ -1772,17 +1784,16 @@ function atualizarMetaScores() {
     badge.className = 'meta-score-badge';
     let txt = '🎯 ' + score + ' pts';
 
-    // Se tem producaoCache, mostra pts reais do mecânico
+    // Se tem producaoCache, mostra pts reais + motos do mecânico
     if (producaoCache && emp.email) {
       const p = producaoCache.porEmail[emp.email.toLowerCase()];
       if (p) {
         const feito = p.pontuacao_hoje || 0;
-        if (feito > 0) {
-          const atingiu = feito >= score;
-          txt = '🎯 ' + score + ' | ' + (atingiu ? '✅' : '🔸') + ' ' + feito + ' pts';
-          if (atingiu) badge.classList.add('atingido');
-          else if (feito < score * 0.5) badge.classList.add('negativo');
-        }
+        const motos = p.motos_hoje || 0;
+        const atingiu = feito >= score;
+        txt = '🎯 ' + score + ' | ' + (atingiu ? '✅' : '🔸') + ' ' + feito + ' pts | 🏍️ ' + motos;
+        if (atingiu) badge.classList.add('atingido');
+        else if (feito < score * 0.5) badge.classList.add('negativo');
       }
     }
     badge.textContent = txt;

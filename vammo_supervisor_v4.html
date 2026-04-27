@@ -278,7 +278,9 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
         <div class="stat"><div class="stat-n" id="st-pres" style="color:var(--green)">0</div><div class="stat-l">Presentes</div></div>
         <div class="stat"><div class="stat-n" id="st-atra" style="color:var(--yellow)">0</div><div class="stat-l">Atrasos</div></div>
         <div class="stat"><div class="stat-n" id="st-falt" style="color:var(--red)">0</div><div class="stat-l">Faltas</div></div>
-        <div class="stat"><div class="stat-n" id="st-outr" style="color:var(--muted)">0</div><div class="stat-l">Outros</div></div>
+        <div class="stat"><div class="stat-n" id="st-afas" style="color:var(--purple,#9b59b6)">0</div><div class="stat-l">Afastados</div></div>
+        <div class="stat"><div class="stat-n" id="st-fer" style="color:var(--cyan,#00bcd4)">0</div><div class="stat-l">Férias</div></div>
+        <div class="stat"><div class="stat-n" id="st-folg" style="color:var(--muted)">0</div><div class="stat-l">Folga</div></div>
         <div class="stat"><div class="stat-n" id="st-trein" style="color:var(--orange,#f5a623)">0</div><div class="stat-l">⭐ Treinamento</div></div>
       </div>
     </div>
@@ -1304,7 +1306,7 @@ function markAll(status){
 }
 
 function updateStats(){
-  let pres=0,atra=0,falt=0,outr=0,trein=0;
+  let pres=0,atra=0,falt=0,afas=0,fer=0,folg=0,trein=0;
   const ocupC={};
   team.forEach(emp=>{
     if(isEmTreinamento(emp))trein++;
@@ -1312,13 +1314,17 @@ function updateStats(){
     if(s==='Presente')pres++;
     else if(s==='Atraso +15min'){atra++;pres++;}
     else if(s==='Faltou')falt++;
-    else if(s)outr++;
+    else if(s==='Afastado')afas++;
+    else if(s==='Férias')fer++;
+    else if(s==='Folga')folg++;
     if(COM_OCUP.includes(s)&&state[emp.nome]?.ocupacao){const o=state[emp.nome].ocupacao;ocupC[o]=(ocupC[o]||0)+1;}
   });
   document.getElementById('st-pres').textContent=pres;
   document.getElementById('st-atra').textContent=atra;
   document.getElementById('st-falt').textContent=falt;
-  document.getElementById('st-outr').textContent=outr;
+  document.getElementById('st-afas').textContent=afas;
+  document.getElementById('st-fer').textContent=fer;
+  document.getElementById('st-folg').textContent=folg;
   const treinEl=document.getElementById('st-trein');
   if(treinEl)treinEl.textContent=trein;
   const tot=pres||1, entries=Object.entries(ocupC).sort((a,b)=>b[1]-a[1]);

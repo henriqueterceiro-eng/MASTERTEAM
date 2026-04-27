@@ -1084,6 +1084,7 @@ function onSupChange() {
   carregarMetaSupervisor(sup);
 }
 function onDateChange() {
+  producaoCache = null; // Limpa cache para recarregar da fonte correta (live vs histórico)
   const dv = document.getElementById('inp-data').value;
   if (dv) updateSbDate(new Date(dv+'T12:00:00'));
   if (team.length > 0) loadPresencas();
@@ -1178,7 +1179,7 @@ function renderTable() {
       <td style="color:var(--muted2);font-size:11px;font-weight:600">${i+1}</td>
       <td class="nm">
         ${emp.nome}${isEmTreinamento(emp)?'<span class="star-badge" title="Em treinamento (< 30 dias)"> ⭐</span>':''}
-        ${(s.ocupacao==='Rampa'&&metaAtual)?`<span class="meta-score-badge" id="msb-${ne}">🎯 ${calcMetaScore()} pts</span>`:''}
+        <span class="meta-score-badge" id="msb-${ne}" style="display:${(s.ocupacao==='Rampa')?'inline-block':'none'}"></span>
       </td>
       <td class="sc">${emp.setor}</td>
       <td><select class="ss ${scCls}" data-nome="${ne}" onchange="onStatus(this)">
@@ -1322,9 +1323,10 @@ function updateStats(){
   el.innerHTML=entries.length
     ?entries.map(([o,n])=>`<div class="ocup-row"><span class="ocup-name">${o}</span><div class="ocup-bar-bg"><div class="ocup-bar" style="width:${Math.round(n/tot*100)}%"></div></div><span class="ocup-n">${n}</span></div>`).join('')
     :'<div style="font-size:11px;color:var(--muted)">Nenhuma registrada</div>';
-  atualizarMetaRampa();
+  atualizarMetaScores();
 }
 
+const ST_COMPRESS = {'Presente':'P','Atraso +15min':'A','Faltou':'F','Afastado':'S','Férias':'V','Folga':'O'};
 async function salvar(){
   const sup=document.getElementById('sel-sup').value, dv=document.getElementById('inp-data').value;
   if(!sup){toast('⚠️ Selecione o supervisor!');return;}
@@ -1335,7 +1337,7 @@ async function salvar(){
     const s=state[emp.nome];
     if(!s?.status)return;
     if(COM_PERIODO.includes(s.status))periodos.push({nome:emp.nome,status:s.status,ini:toDisp(s.periodoIni||dv),fim:toDisp(s.periodoFim||dv),obs:s.obs||''});
-    else chamada.push({nome:enc(emp.nome),st:s.status[0]||'',oc:s.ocupacao||'',ob:s.obs||''});
+    else chamada.push({nome:enc(emp.nome),st:ST_COMPRESS[s.status]||s.status[0]||'',oc:s.ocupacao||'',ob:s.obs||''});
   });
   if(!chamada.length&&!periodos.length){toast('⚠️ Nenhum status preenchido!');return;}
   const btn=document.getElementById('btn-salvar');
@@ -1451,13 +1453,10 @@ function carregarMetaSupervisor(supNome) {
       document.getElementById('meta-dia-val').textContent = m.metaDiaria + ' pts';
       document.getElementById('meta-dia-ref').textContent =
         'Meta semanal: ' + m.meta + ' pts ÷ ' + (m.escala === '5x2' ? 5 : 6) + ' dias';
-      atualizarMetaRampa();
-      // Re-renderiza tabela para criar badges agora que metaAtual existe
-      if (team.length > 0) renderTable();
+      atualizarMetaScores();
       // Carrega produção real proativamente
       carregarProducaoCache(function() {
         atualizarMetaScores();
-        atualizarMetaRampa();
       });
     });
   });
@@ -1484,7 +1483,11 @@ function atualizarMetaRampa() {
   const valAcum = document.getElementById('prod-acumulada-val');
   const refAcum = document.getElementById('prod-acumulada-ref');
   if (valAcum) { valAcum.textContent = prodAcumulada > 0 ? prodAcumulada.toLocaleString('pt-BR') + ' pts' : '—'; }
-  if (refAcum) { refAcum.textContent = producaoCache ? 'Pontuação em tempo real' : 'Carregando...'; }
+  if (refAcum) {
+    if (!producaoCache) refAcum.textContent = 'Carregando...';
+    else if (producaoCache._fonte === 'historico') refAcum.textContent = '📁 Dados do snapshot (23h)';
+    else refAcum.textContent = '⚡ Tempo real — Metabase';
+  }
 
   // Saldo restante
   const saldo = metaAtual.metaDiaria - prodAcumulada;
@@ -1518,14 +1521,36 @@ let producaoCache = null;  // { porEmail: {...} }
 
 function carregarProducaoCache(cb) {
   if (producaoCache) { cb(producaoCache); return; }
-  call('producao', {}, d => {
-    if (d.ok) { producaoCache = d; }
-    cb(producaoCache);
-    if (producaoCache && metaAtual) {
-      atualizarMetaSemanal();
-      atualizarMetaScores(); // Atualiza badges com produção real
-    }
-  });
+
+  const dv = document.getElementById('inp-data').value; // yyyy-MM-dd
+  const hoje = fmtIn(new Date());
+  const isHoje = (dv === hoje);
+
+  if (isHoje) {
+    // Hoje → Metabase tempo real
+    call('producao', {}, d => {
+      if (d.ok) { producaoCache = d; producaoCache._fonte = 'live'; }
+      cb(producaoCache);
+      if (producaoCache && metaAtual) {
+        atualizarMetaSemanal();
+        atualizarMetaScores();
+      }
+    });
+  } else {
+    // Dia passado → ProducaoHistorico (snapshot das 23h)
+    const ds = toDisp(dv); // dd/MM/yyyy
+    call('producaoDia', { data: ds }, d => {
+      if (d.ok) {
+        producaoCache = d;
+        producaoCache._fonte = 'historico';
+        if (d.total === 0) producaoCache._aviso = 'Sem dados de produção para ' + ds;
+      }
+      cb(producaoCache);
+      if (producaoCache && metaAtual) {
+        atualizarMetaScores();
+      }
+    });
+  }
 }
 
 function carregarProducaoMecanico() {
@@ -1728,17 +1753,25 @@ function calcMetaScore() {
 }
 
 function atualizarMetaScores() {
-  if (!metaAtual || !metaAtual.metaDiaria) return;
-  const score = calcMetaScore();
-  // Atualiza todos os badges visíveis — agora com produção real individual
+  const score = (metaAtual && metaAtual.metaDiaria) ? calcMetaScore() : null;
+
   team.forEach(emp => {
     const ne = enc(emp.nome);
     const badge = document.getElementById('msb-' + ne);
     if (!badge) return;
     const s = state[emp.nome];
-    if (!s || s.ocupacao !== 'Rampa') return;
+    const isRampa = s && s.ocupacao === 'Rampa';
 
+    // Esconde se não é Rampa ou sem meta
+    if (!isRampa || !score) {
+      badge.style.display = 'none';
+      return;
+    }
+
+    badge.style.display = 'inline-block';
+    badge.className = 'meta-score-badge';
     let txt = '🎯 ' + score + ' pts';
+
     // Se tem producaoCache, mostra pts reais do mecânico
     if (producaoCache && emp.email) {
       const p = producaoCache.porEmail[emp.email.toLowerCase()];
@@ -1747,14 +1780,14 @@ function atualizarMetaScores() {
         if (feito > 0) {
           const atingiu = feito >= score;
           txt = '🎯 ' + score + ' | ' + (atingiu ? '✅' : '🔸') + ' ' + feito + ' pts';
-          badge.classList.toggle('atingido', atingiu);
-          badge.classList.toggle('negativo', !atingiu && feito < score * 0.5);
+          if (atingiu) badge.classList.add('atingido');
+          else if (feito < score * 0.5) badge.classList.add('negativo');
         }
       }
     }
     badge.textContent = txt;
   });
-  // Atualiza o painel lateral também
+
   atualizarMetaRampa();
 }
 

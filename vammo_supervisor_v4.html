@@ -1145,11 +1145,12 @@ function onSupChange() {
   carregarK2K();
 }
 function onDateChange() {
-  producaoCache = null; // Limpa cache para recarregar da fonte correta (live vs histórico)
+  producaoCache = null;
   clearInterval(producaoTimer);
   const dv = document.getElementById('inp-data').value;
   if (dv) updateSbDate(new Date(dv+'T12:00:00'));
   if (team.length > 0) loadPresencas();
+  carregarK2K();
 }
 function reloadPresencas() { loadPresencas(); }
 function updateSbDate(d) {
@@ -1535,15 +1536,17 @@ function carregarMetaSupervisor(supNome) {
 function carregarK2K() {
   const panel = document.getElementById('k2k-panel');
   if (!panel) return;
-  // Precisa do turnoSup para saber qual query buscar
   const supSel = document.getElementById('sel-sup').value;
   if (!supSel) { panel.style.display = 'none'; return; }
-  // Busca turno do supervisor
+  const dv = document.getElementById('inp-data').value;
+  const dataDisp = dv ? toDisp(dv) : '';
   call('supervisores', {}, function(d) {
     if (!d.supervisores) { panel.style.display = 'none'; return; }
     const sup = d.supervisores.find(function(s) { return s.nome === supSel; });
     if (!sup || !sup.turno) { panel.style.display = 'none'; return; }
-    call('k2k', { turno: sup.turno }, function(k) {
+    var params = { turno: sup.turno };
+    if (dataDisp) params.data = dataDisp;
+    call('k2k', params, function(k) {
       if (!k.ok || !k.hoje) { panel.style.display = 'none'; return; }
       panel.style.display = '';
       renderK2K(k);

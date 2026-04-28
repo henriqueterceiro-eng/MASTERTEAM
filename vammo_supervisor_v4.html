@@ -1306,7 +1306,7 @@ function renderRow(nome) {
   const tr=document.getElementById('tr-'+ne);
   if(!tr)return;
   tr.dataset.s=status;
-  tr.children[3].innerHTML=`<select class="ss ${scCls}" data-nome="${ne}" onchange="onStatus(this)">
+  tr.children[2].innerHTML=`<select class="ss ${scCls}" data-nome="${ne}" onchange="onStatus(this)">
     <option value="">— sem status —</option>
     <option value="Presente" ${status==='Presente'?'selected':''}>✅ Presente</option>
     <option value="Atraso +15min" ${status==='Atraso +15min'?'selected':''}>⏰ Atraso +15min</option>
@@ -1315,13 +1315,13 @@ function renderRow(nome) {
     <option value="Férias" ${status==='Férias'?'selected':''}>🏖️ Férias (período)</option>
     <option value="Folga" ${status==='Folga'?'selected':''}>🔘 Folga</option>
   </select>`;
-  tr.children[4].innerHTML=showOcup
+  tr.children[3].innerHTML=showOcup
     ?`<select class="os ${s.ocupacao?'filled':''}" data-nome="${ne}" onchange="onOcup(this)">
         <option value="">— ocupação —</option>
         ${OCUPACOES.map(o=>`<option value="${o}" ${s.ocupacao===o?'selected':''}>${o}</option>`).join('')}
       </select>`
     :'<span style="font-size:11px;color:var(--muted2)">—</span>';
-  tr.children[5].innerHTML=showPer
+  tr.children[4].innerHTML=showPer
     ?`<div class="period-cell">
         <input type="date" value="${pIni}" data-nome="${ne}" data-tipo="ini" onchange="onPeriod(this)">
         <span class="period-sep">até</span>

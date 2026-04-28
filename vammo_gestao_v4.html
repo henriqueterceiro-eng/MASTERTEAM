@@ -273,6 +273,15 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
   <div class="ctrl">
     <div class="ctrl-g"><div class="ctrl-l">Data</div><input type="date" id="dash-data" onchange="loadDash()"></div>
     <button class="btn btn-blue btn-sm" onclick="loadDash()" style="margin-bottom:1px;">↺ Atualizar</button>
+    <div style="width:1px;height:28px;background:var(--b2);margin:0 8px;align-self:flex-end;margin-bottom:4px;"></div>
+    <div class="ctrl-g"><div class="ctrl-l">Período (gráficos)</div>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <input type="date" id="dash-per-ini" style="width:130px;">
+        <span style="font-size:10px;color:var(--muted);">até</span>
+        <input type="date" id="dash-per-fim" style="width:130px;">
+      </div>
+    </div>
+    <button class="btn btn-blue btn-sm" onclick="loadDashGraficos()" style="margin-bottom:1px;">📈 Ver gráficos</button>
     <div id="dash-status" style="font-size:11px;color:var(--muted);margin-left:8px;align-self:flex-end;padding-bottom:4px;"></div>
   </div>
 
@@ -290,6 +299,12 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
 
   <!-- PER TURNO -->
   <div id="dash-turnos" style="padding:0 24px 12px;"></div>
+
+  <!-- GRÁFICOS DE LINHA -->
+  <div id="dash-graficos" style="display:none;padding:0 24px 16px;">
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:12px;">📈 EVOLUÇÃO DIÁRIA POR TIME</div>
+    <div id="dash-charts-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"></div>
+  </div>
 
   <!-- GRÁFICO ABSENTEÍSMO -->
   <div style="background:var(--white);border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);flex-shrink:0;">
@@ -758,6 +773,11 @@ function init() {
   setPreset('ext',15,document.querySelector('#page-ext .preset.active'));
   setPreset('bon',15,document.querySelector('#page-bonus .preset.active'));
   document.getElementById('dash-data').value = fmtIn(new Date());
+  // Default period: last 14 days
+  var perFim = new Date(), perIni = new Date();
+  perIni.setDate(perFim.getDate() - 13);
+  document.getElementById('dash-per-ini').value = fmtIn(perIni);
+  document.getElementById('dash-per-fim').value = fmtIn(perFim);
   iniciarDashboard();
 
   call('supervisores',{},d=>{
@@ -903,6 +923,182 @@ function filterDash(){}
 function renderOcupPanel(){}
 function renderNivelPanel(){}
 function renderSupBd(){}
+
+// ═══════════════════════════════════════════════════════
+// GRÁFICOS DE LINHA — EVOLUÇÃO DIÁRIA POR TIME
+// ═══════════════════════════════════════════════════════
+var TURNO_CORES = {
+  'Primeiro': { line: '#2EC2FF', fill: 'rgba(46,194,255,0.12)' },
+  'Segundo':  { line: '#8B5CF6', fill: 'rgba(139,92,246,0.12)' }
+};
+
+function loadDashGraficos() {
+  var ini = document.getElementById('dash-per-ini').value;
+  var fim = document.getElementById('dash-per-fim').value;
+  if (!ini || !fim) { toast('⚠️ Selecione início e fim do período'); return; }
+  var statusEl = document.getElementById('dash-status');
+  if (statusEl) statusEl.textContent = '⏳ Carregando gráficos...';
+
+  call('dashHistorico', { inicio: toDisp(ini), fim: toDisp(fim) }, function(d) {
+    if (d.error) { if (statusEl) statusEl.textContent = '❌ ' + d.error; return; }
+    if (statusEl) statusEl.textContent = '✅ Gráficos carregados';
+    var container = document.getElementById('dash-graficos');
+    container.style.display = '';
+    renderLineCharts(d.dias, d.turnoIds || [], d.turnoNomes || {});
+  });
+}
+
+function renderLineCharts(dias, turnoIds, turnoNomes) {
+  var grid = document.getElementById('dash-charts-grid');
+  if (!grid) return;
+
+  var metricas = [
+    { key: 'absenteismo_pct', label: 'Absenteísmo %', icon: '📋', fmt: function(v){return v!==null?v.toFixed(1)+'%':'';} },
+    { key: 'motos', label: 'Motos Entregues', icon: '🏍️', fmt: function(v){return v;} },
+    { key: 'pontuacao', label: 'Pontuação', icon: '⭐', fmt: function(v){return v;} },
+    { key: 'k2k_acima120', label: 'K2K +120min', icon: '⏱️', fmt: function(v){return v;} }
+  ];
+
+  // Organiza: para cada turno, para cada dia, pega os valores
+  var datas = [];
+  var seen = {};
+  dias.forEach(function(d) {
+    if (!seen[d.data]) { seen[d.data] = true; datas.push(d.data); }
+  });
+
+  // Indexa por data+turno
+  var idx = {};
+  dias.forEach(function(d) { idx[d.data + '|' + d.turnoId] = d; });
+
+  grid.innerHTML = metricas.map(function(m, mi) {
+    return '<div style="background:var(--white);border:1px solid var(--b1);border-radius:12px;padding:14px;box-shadow:var(--shadow);">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;">' + m.icon + ' ' + m.label + '</div>' +
+      '<canvas id="lc-' + mi + '" style="width:100%;height:140px;display:block;"></canvas>' +
+      '<div style="display:flex;gap:12px;margin-top:6px;justify-content:center;">' +
+        turnoIds.map(function(tid) {
+          var cor = (TURNO_CORES[tid] || { line: '#999' }).line;
+          return '<span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px;">' +
+            '<span style="width:12px;height:3px;background:' + cor + ';border-radius:2px;"></span>' +
+            (turnoNomes[tid] || tid) + '</span>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Desenha cada gráfico
+  setTimeout(function() {
+    metricas.forEach(function(m, mi) {
+      var canvas = document.getElementById('lc-' + mi);
+      if (!canvas) return;
+      var series = turnoIds.map(function(tid) {
+        return {
+          tid: tid,
+          cor: (TURNO_CORES[tid] || { line: '#999' }).line,
+          fill: (TURNO_CORES[tid] || { fill: 'rgba(0,0,0,0.05)' }).fill,
+          pts: datas.map(function(dt) {
+            var d = idx[dt + '|' + tid];
+            return d ? (d[m.key] !== null && d[m.key] !== undefined ? d[m.key] : null) : null;
+          })
+        };
+      });
+      drawLineChart(canvas, datas, series, m.fmt);
+    });
+  }, 100);
+}
+
+function drawLineChart(canvas, labels, series, fmt) {
+  var dpr = window.devicePixelRatio || 1;
+  var W = canvas.parentElement.clientWidth - 28;
+  var H = 140;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  var PAD = { top: 12, right: 10, bottom: 28, left: 36 };
+  var cW = W - PAD.left - PAD.right;
+  var cH = H - PAD.top - PAD.bottom;
+  var N = labels.length;
+  if (N < 2) return;
+
+  // Find max value across all series
+  var maxV = 1;
+  series.forEach(function(s) {
+    s.pts.forEach(function(v) { if (v !== null && v > maxV) maxV = v; });
+  });
+  var yMax = Math.ceil(maxV * 1.15);
+  if (yMax < 5) yMax = 5;
+
+  // Grid
+  ctx.font = '9px Barlow,sans-serif';
+  for (var i = 0; i <= 4; i++) {
+    var v = (yMax / 4) * i;
+    var y = PAD.top + cH - (v / yMax) * cH;
+    ctx.beginPath();
+    ctx.strokeStyle = i === 0 ? '#C8D6E8' : '#EEF2F7';
+    ctx.lineWidth = 1;
+    ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
+    ctx.fillStyle = '#7A8FA6'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(v), PAD.left - 4, y + 3);
+  }
+
+  // X labels
+  var xStep = cW / (N - 1);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#7A8FA6';
+  var skipX = N > 15 ? Math.ceil(N / 10) : N > 7 ? 2 : 1;
+  labels.forEach(function(l, i) {
+    if (i % skipX === 0 || i === N - 1) {
+      ctx.fillText(l.substring(0, 5), PAD.left + i * xStep, PAD.top + cH + 16);
+    }
+  });
+
+  // Draw each series
+  series.forEach(function(s) {
+    var pts = s.pts.map(function(v, i) {
+      return {
+        x: PAD.left + i * xStep,
+        y: v !== null ? PAD.top + cH - (v / yMax) * cH : null,
+        v: v
+      };
+    });
+    var valid = pts.filter(function(p) { return p.y !== null; });
+    if (valid.length < 2) return;
+
+    // Fill
+    ctx.beginPath();
+    ctx.moveTo(valid[0].x, PAD.top + cH);
+    valid.forEach(function(p) { ctx.lineTo(p.x, p.y); });
+    ctx.lineTo(valid[valid.length - 1].x, PAD.top + cH);
+    ctx.closePath();
+    ctx.fillStyle = s.fill;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.strokeStyle = s.cor;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    var first = true;
+    pts.forEach(function(p) {
+      if (p.y === null) { first = true; return; }
+      if (first) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      first = false;
+    });
+    ctx.stroke();
+
+    // Dots
+    valid.forEach(function(p) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = s.cor;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  });
+}
 
 // ════ EXTRAÇÃO ════
 function toggleChk(inp){inp.closest('label').classList.toggle('checked',inp.checked);}

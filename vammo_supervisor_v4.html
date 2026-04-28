@@ -406,14 +406,13 @@ td.sc{font-size:11px;color:var(--muted);font-weight:500;}
         <thead><tr>
           <th style="width:40px">#</th>
           <th>Colaborador</th>
-          <th>Setor</th>
           <th>Status</th>
           <th>Ocupação</th>
           <th>Período (afastado/férias)</th>
           <th>Obs</th>
         </tr></thead>
         <tbody id="tbody">
-          <tr class="empty-row"><td colspan="7"><div class="spinner"></div>Aguardando supervisor...</td></tr>
+          <tr class="empty-row"><td colspan="6"><div class="spinner"></div>Aguardando supervisor...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1161,20 +1160,20 @@ function updateSbDate(d) {
 
 function loadTeam() {
   const sup = document.getElementById('sel-sup').value;
-  document.getElementById('tbody').innerHTML='<tr class="empty-row"><td colspan="7"><div class="spinner"></div></td></tr>';
+  document.getElementById('tbody').innerHTML='<tr class="empty-row"><td colspan="6"><div class="spinner"></div></td></tr>';
   call('time',{supervisor:sup},d=>{
     team = d.time||[];
 
     if (d.aviso) {
       document.getElementById('tbody').innerHTML=
-        '<tr class="empty-row"><td colspan="7" style="color:var(--orange);">⚠️ ' + d.aviso + '</td></tr>';
+        '<tr class="empty-row"><td colspan="6" style="color:var(--orange);">⚠️ ' + d.aviso + '</td></tr>';
       updateStats(); return;
     }
 
     if (!team.length) {
       const turno = d.turnoSup || '';
       document.getElementById('tbody').innerHTML=
-        '<tr class="empty-row"><td colspan="7">' +
+        '<tr class="empty-row"><td colspan="6">' +
         (turno
           ? 'Nenhum mecânico com turno <strong>' + turno + '</strong> encontrado.<br><small style="color:var(--muted)">Verifique o cadastro dos colaboradores no painel do gerente.</small>'
           : '⚠️ Supervisor sem turno configurado.<br><small style="color:var(--muted)">Peça ao gerente configurar o turno em ⚙️ Config → Supervisores.</small>') +
@@ -1232,7 +1231,7 @@ function renderTable() {
     return true;
   });
   document.getElementById('toolbar-title').textContent=`CHAMADA — ${sup} (${teamAtivo.length})`;
-  if(!list.length){document.getElementById('tbody').innerHTML='<tr class="empty-row"><td colspan="7">Nenhum resultado</td></tr>';updateStats();return;}
+  if(!list.length){document.getElementById('tbody').innerHTML='<tr class="empty-row"><td colspan="6">Nenhum resultado</td></tr>';updateStats();return;}
   const dv=document.getElementById('inp-data').value;
   let html='';
   list.forEach((emp,i)=>{
@@ -1247,7 +1246,6 @@ function renderTable() {
         ${emp.nome}${isEmTreinamento(emp)?'<span class="star-badge" title="Em treinamento (< 30 dias)"> ⭐</span>':''}
         <span class="meta-score-badge" id="msb-${ne}" style="display:${(s.ocupacao==='Rampa')?'inline-block':'none'}"></span>
       </td>
-      <td class="sc">${emp.setor}</td>
       <td><select class="ss ${scCls}" data-nome="${ne}" onchange="onStatus(this)">
         <option value="">— sem status —</option>
         <option value="Presente" ${status==='Presente'?'selected':''}>✅ Presente</option>

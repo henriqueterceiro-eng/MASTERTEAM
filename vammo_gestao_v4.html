@@ -326,15 +326,6 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px
           <div id="chart-tooltip" style="display:none;position:absolute;background:var(--text);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-md);z-index:10;"></div>
         </div>
       </div>
-      <!-- TABELA DETALHE -->
-      <div class="panel-hd" style="flex-shrink:0;">
-        <div class="panel-title">Detalhe por colaborador</div>
-        <input type="text" class="search-box" placeholder="Buscar..." id="dash-s" oninput="filterDash()" style="width:180px;">
-      </div>
-      <div class="tw" style="flex:1;">
-        <table><thead><tr><th>Colaborador</th><th>Supervisor</th><th>Turno</th><th>Status</th><th>Ocupação</th></tr></thead>
-        <tbody id="dash-body"><tr><td colspan="5" class="empty-st">Clique em Atualizar</td></tr></tbody></table>
-      </div>
     </div>
     <div class="dash-side">
       <div class="panel-hd" style="flex-shrink:0;">
@@ -881,20 +872,8 @@ function statusBadge(s){
 }
 function turnoNome(id){return turnoMap[id]||id;}
 
-function renderDashTable(det){
-  const q=document.getElementById('dash-s').value.toLowerCase();
-  const list=det.filter(r=>!q||r.nome.toLowerCase().includes(q)||(r.supervisor||'').toLowerCase().includes(q));
-  document.getElementById('dash-body').innerHTML=list.length
-    ?list.map(r=>`<tr>
-      <td><strong>${r.nome}</strong></td>
-      <td style="font-size:11px;color:var(--muted)">${r.supervisor||'—'}</td>
-      <td><span class="badge b-blue" style="font-size:10px">${turnoNome(r.turno||'')}</span></td>
-      <td>${statusBadge(r.status)}</td>
-      <td style="color:var(--blue);font-size:12px;font-weight:600">${r.ocupacao||'—'}</td>
-    </tr>`).join('')
-    :'<tr><td colspan="5" class="empty-st">Nenhum resultado</td></tr>';
-}
-function filterDash(){if(dashData)renderDashTable(dashData.detalhes);}
+function renderDashTable(det){}
+function filterDash(){}
 
 function renderOcupPanel(oc,tot){
   const entries=Object.entries(oc).sort((a,b)=>b[1]-a[1]);
